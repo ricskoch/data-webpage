@@ -8,6 +8,7 @@ const screen = (i: number, cell: string, status: string) => ({
   selection_type: 'negative_selection', phenotype: 'cell proliferation', experimental_setup: 'timecourse',
   scoring_method: 'Log2FC', result_scope: 'all_genes', normalization_status: status, direction: null,
   direction_evidence: null, known_biology_pass: null, rows: 18000 + i, hits: 10,
+  treatment: i % 10 ? null : 'Olaparib', treatment_dose: i % 10 ? null : '5.0 µM', treatment_duration: null,
 });
 const screens = Array.from({ length: 60 }, (_, i) => screen(i, i < 40 ? 'HeLa' : 'K562', i % 4 ? 'anchored' : 'rank_only'));
 const summary = { screens: 60, studies: 3, rows: 1_000_000, by_status: { anchored: 45, rank_only: 15 },
@@ -34,12 +35,16 @@ test('/data: filters, sorting and paging on the screens table', async ({ page })
   await page.getByLabel('Comparable as', { exact: true }).selectOption('rank_only');
   await expect(count).toHaveText('5 of 60 screens match.');
   await page.getByRole('button', { name: 'Clear filters' }).click();
+  await page.getByLabel('Treatment', { exact: true }).selectOption('Olaparib');
+  await expect(count).toHaveText('6 of 60 screens match.');
+  await expect(page.locator('#screens tbody tr').first().locator('td').nth(7)).toHaveText('Olaparib (5.0 µM)');
+  await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(count).toHaveText('60 of 60 screens match.');
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.locator('#screens [data-pos]')).toHaveText('Page 2 of 3');
   await page.getByRole('button', { name: 'Genes', exact: true }).click();
   await page.getByRole('button', { name: 'Genes', exact: true }).click();
-  await expect(page.locator('#screens tbody tr').first().locator('td').nth(7)).toHaveText('18,059');
+  await expect(page.locator('#screens tbody tr').first().locator('td').nth(8)).toHaveText('18,059');
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });
@@ -48,7 +53,10 @@ test('/gene: results start most depleted first and can be filtered to hits', asy
   await fakeData(page);
   await page.goto('/gene?g=tp53');
   await expect(page.locator('#results [data-count]')).toHaveText('60 of 60 screen results match.');
-  await expect(page.locator('#results tbody tr').first().locator('td').nth(4)).toHaveText('0.00');
+  await expect(page.locator('#results tbody tr').first().locator('td').nth(5)).toHaveText('0.00');
+  await page.getByLabel('Treatment', { exact: true }).selectOption('Olaparib');
+  await expect(page.locator('#results [data-count]')).toHaveText('6 of 60 screen results match.');
+  await page.getByRole('button', { name: 'Clear filters' }).click();
   await page.getByLabel('Hit', { exact: true }).selectOption('yes');
   await expect(page.locator('#results [data-count]')).toHaveText('9 of 60 screen results match.');
   await page.getByText('How to read the scores').click();
@@ -81,9 +89,9 @@ test('/data: tissue filter and key mutations from the cell line context', async 
   const count = page.locator('#screens [data-count]');
   await page.getByLabel('Tissue', { exact: true }).selectOption('Myeloid');
   await expect(count).toHaveText('20 of 60 screens match.');
-  await expect(page.locator('#screens tbody tr').first().locator('td').nth(10)).toHaveText('TP53 p.Q136fs');
+  await expect(page.locator('#screens tbody tr').first().locator('td').nth(11)).toHaveText('TP53 p.Q136fs');
   await page.getByRole('button', { name: 'Clear filters' }).click();
-  await page.getByLabel('Search study, cell line, phenotype or mutated gene').fill('TP53');
+  await page.getByLabel('Search study, cell line, phenotype, treatment or mutated gene').fill('TP53');
   await expect(count).toHaveText('20 of 60 screens match.');
   await expect(page.getByText('both CC BY 4.0')).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
