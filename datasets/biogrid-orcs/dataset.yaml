@@ -57,3 +57,54 @@ parquet:
   sort_by: ["perturbation_id", "screen_id"]
   # Genes used to measure how much one lookup has to read (TP53, RPL3, the NTC non-targeting control)
   probe_ids: ["entrez:7157", "entrez:6122", "orcs:77294U"]
+
+# Score normalization (spec 12.8, docs/score-normalization.md). Needs bioinformatician review before any release.
+reference_sets:
+  # Hart et al. core-essential (CEGv2) and non-essential (NEGv1) genes, MIT licence (hart-lab/bagel).
+  # Fetched at run time, never committed. Checksums are recorded in the manifest.
+  ceg: https://raw.githubusercontent.com/hart-lab/bagel/master/CEGv2.txt
+  neg: https://raw.githubusercontent.com/hart-lab/bagel/master/NEGv1.txt
+normalization:
+  min_reference_genes: 50      # per full set, spec 12.8
+  min_separation: 0.5          # |median NEG - median CEG| in robust SDs needed to infer direction (half A)
+  known_biology_pass_share: 0.9
+  # Study-level direction confirmed by a person: {study_id: lower_is_depleted | higher_is_depleted}
+  direction_overrides: {}
+# Native score names -> family, whether the score has a sign, and the documented direction where the method fixes it.
+# signed: false means it says "how sure" or "how many", not "which way", so it never feeds the effect columns.
+score_families:
+  CERES score: {family: CERES, signed: true, direction: lower_is_depleted}
+  Bayes Factor: {family: BAGEL, signed: true, direction: higher_is_depleted, nonlinear: true}
+  Log2FC: {family: LFC, signed: true}
+  Log2: {family: LFC, signed: true}
+  mean fold change: {family: LFC, signed: true}
+  Rho (Log2e Treated vs. Untreated): {family: LFC, signed: true}
+  Gamma (normalized log2e/t): {family: LFC, signed: true}
+  Z-score: {family: z-score, signed: true}
+  ZLFC: {family: z-score, signed: true}
+  T-score: {family: z-score, signed: true}
+  CRISPR Score (CS): {family: CRISPR-score, signed: true}
+  MaGeCK Score: {family: MAGeCK-unspecified, signed: true}
+  Beta Score: {family: MAGeCK-MLE, signed: true}
+  CasTLE Score: {family: CasTLE, signed: true}
+  CasTLE Effect: {family: CasTLE, signed: true}
+  Rank: {family: rank, signed: true, nonlinear: true}
+  RANKS score: {family: rank, signed: true, nonlinear: true}
+  FDR: {family: p-value, signed: false}
+  p-Value: {family: p-value, signed: false}
+  q-Value: {family: p-value, signed: false}
+  Log10 (p-value): {family: p-value, signed: false}
+  -log (p-value): {family: p-value, signed: false}
+  Log10 (Corrected p-Value): {family: p-value, signed: false}
+  RSA: {family: p-value, signed: false}
+  Reduced Chi Squared: {family: p-value, signed: false}
+  MAGeCK pos score: {family: MAGeCK-RRA, signed: false}
+  MAGeCK neg score: {family: MAGeCK-RRA, signed: false}
+  RRA score: {family: MAGeCK-RRA, signed: false}
+  RRA rank: {family: MAGeCK-RRA, signed: false}
+  RRA_depletion: {family: MAGeCK-RRA, signed: false}
+  RRA_enrichment: {family: MAGeCK-RRA, signed: false}
+  STARS Score: {family: STARS, signed: false}
+  sgRNA number: {family: count, signed: false}
+  Read counts: {family: count, signed: false}
+# Any other name: family "other", treated as signed with unknown direction (resolved by the known-biology test or a person).

@@ -11,4 +11,6 @@ python -I datasets/biogrid-orcs/ingest.py convert /tmp/orcs    # writes /tmp/orc
 
 Outputs in `out/`: `results.parquet` (one row per source row, native scores, sorted by `perturbation_id`), `screens`, `studies`, `score_defs`, `conditions`, `perturbations` (Parquet), `rejected_rows.csv`, `validation_report.json`, `manifest.json`. A blocking check failure exits with code 1.
 
-Not done here yet: direction and effect columns (`effect_rank`, `effect_scaled`, `effect_z`), known-biology checks, vocabulary mapping, staging upload. `profile.py` is the M2a exploration script and is not part of the pipeline.
+`normalize.py` adds the comparable score columns (`effect_rank`, `effect_scaled`, `effect_z`) and per-screen direction, using the primary score (first signed score column) and the Hart CEGv2/NEGv1 gene lists, which `fetch` downloads. The known-biology summary is in `validation_report.json`; it is flagged, not blocking, because the release gate is a human decision.
+
+Not done here yet: vocabulary mapping, staging upload. `profile.py` is the M2a exploration script and is not part of the pipeline.
