@@ -126,7 +126,9 @@ def main(work):
     report += ["", "## DepMap"]
     try:
         text = get(dm["listing_url"]).decode("utf-8", "replace")
-        listing = [{k.strip().lower(): (v or "").strip() for k, v in r.items()} for r in csv.DictReader(io.StringIO(text))]
+        report.append(f"- Listing starts with: `{text[:300]!r}`")
+        listing = [{k.strip().lower(): (v or "").strip() for k, v in r.items() if isinstance(k, str)}
+                   for r in csv.DictReader(io.StringIO(text))]
         report.append(f"- Listing columns: {list(listing[0]) if listing else 'empty'}; {len(listing):,} files")
         release, files, missing = context.pick_depmap_files(listing, dm["files"], dm["release_pattern"])
         write_csv(out / "depmap_files.csv", [r for r in listing if r.get("release") == release])
@@ -145,8 +147,8 @@ def main(work):
                 agree = sum(by_rrid[a] == ours[a] for a in inmodel if ours[a])
                 report.append(f"- Our matched lines found in the DepMap model table by RRID: {len(inmodel):,} of "
                               f"{len(ours):,}; DepMap ID agrees with Cellosaurus for {agree:,}")
-    except (RuntimeError, KeyError, StopIteration) as e:
-        report.append(f"- Could not read the DepMap listing: {e}")
+    except Exception as e:  # report and carry on: the Cellosaurus part of the report is still useful
+        report.append(f"- Could not read the DepMap listing: {type(e).__name__}: {e}")
     report += [f"- Licence evidence: {s}" for s in licence_evidence(dm["licence_page"],
                                                                      [r"CC BY[ -]?4\.0", r"Creative Commons"])]
 
