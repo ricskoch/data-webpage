@@ -26,3 +26,28 @@ jobs:
           if [ -n "$bad$big" ]; then echo "Data or large files found:"; echo "$bad"; echo "$big"; exit 1; fi
       - name: Required docs exist
         run: test -f docs/spec.md && test -f AGENTS.md
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run check
+      - name: Build
+        run: npm run build
+      - name: Dependency audit (high severity and above)
+        run: npm audit --audit-level=high
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Smoke and accessibility tests
+        run: npm test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7

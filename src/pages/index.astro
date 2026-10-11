@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="CRISPR Screen Explorer (working title)"
+  description="Browse and compare public human CRISPR screens in one standard format, with experiment details alongside the results."
+>
+  <h1>Explore human CRISPR screens without writing code</h1>
+  <p class="lede">
+    Public CRISPR screen results are spread over many files and formats. This project puts them
+    in one standard format so you can browse screens, look up a gene, and check whether similar
+    experiments agree, with the experimental details shown next to every result.
+  </p>
+  <p class="notice">
+    <strong>Work in progress.</strong> The site is being built in small steps. The first data
+    source will be BioGRID ORCS (human screens). Nothing here is ready for research use yet.
+  </p>
+  <h2>What is planned</h2>
+  <ul>
+    <li>A screen browser with filters for cell line, library and treatment.</li>
+    <li>Gene lookup across all screens, with experiment context.</li>
+    <li>Reproducibility comparison between screens with similar backgrounds.</li>
+    <li>Downloads with checksums, licences and citations for every dataset.</li>
+  </ul>
+  <p><a href="/about">Read more about the project</a></p>
+</Base>
