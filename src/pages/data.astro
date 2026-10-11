@@ -15,7 +15,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 </Base>
 
 <script>
-  import { getJSON, bars, label, escapeHtml, type Screen } from '../scripts/data';
+  import { getJSON, bars, label, escapeHtml, type Screen, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
   import { loadLines, credit, type Line } from '../scripts/context';
 
@@ -51,12 +51,14 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     mountTable<Screen>(document.getElementById('screens')!, {
       rows: screens, noun: 'screens', label: 'Screens table',
       caption: 'Table 1. Screens in the collection. Genes = number of gene results in the screen.',
-      search: { label: lines ? 'Search study, cell line, phenotype or mutated gene' : 'Search study, cell line or phenotype', in: [(s) => s.author_label, (s) => s.study_id, (s) => s.cell_line_label, (s) => s.phenotype, (s) => lineOf(s)?.drivers.join(' ')] },
+      search: { label: lines ? 'Search study, cell line, phenotype, treatment or mutated gene' : 'Search study, cell line, phenotype or treatment', in: [(s) => s.author_label, (s) => s.study_id, (s) => s.cell_line_label, (s) => s.phenotype, (s) => s.treatment, (s) => lineOf(s)?.drivers.join(' ')] },
       facets: [
         { key: 'cell', label: 'Cell line', get: (s) => s.cell_line_label },
         { key: 'study', label: 'Study', get: (s) => s.author_label ?? s.study_id },
         { key: 'library', label: 'Library', get: (s) => s.library_name },
         { key: 'phenotype', label: 'Phenotype', get: (s) => s.phenotype },
+        { key: 'setup', label: 'Setup', get: (s) => s.experimental_setup },
+        { key: 'treatment', label: 'Treatment', get: (s) => s.treatment ?? 'none' },
         { key: 'type', label: 'Type', get: (s) => s.perturbation_type, show: label },
         { key: 'selection', label: 'Selection', get: (s) => s.selection_type, show: label },
         { key: 'status', label: 'Comparable as', get: (s) => s.normalization_status, show: label },
@@ -70,6 +72,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         { label: 'Type', cell: (s) => text(label(s.perturbation_type)), sort: (s) => s.perturbation_type },
         { label: 'Selection', cell: (s) => text(label(s.selection_type)), sort: (s) => s.selection_type },
         { label: 'Phenotype', cell: (s) => text(s.phenotype), sort: (s) => s.phenotype },
+        { label: 'Treatment', cell: (s) => text(treatmentLabel(s)), sort: (s) => s.treatment },
         { label: 'Genes', cell: (s) => (s.rows ?? 0).toLocaleString('en'), sort: (s) => s.rows, num: true },
         { label: 'Comparable as', cell: (s) => text(label(s.normalization_status)), sort: (s) => s.normalization_status },
         ...(lines ? [

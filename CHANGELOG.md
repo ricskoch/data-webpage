@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- F20/F21: drug and other treatment names now reach the site. `export_site.py` joins the `conditions` table into `screens.json` (`treatment`, `treatment_dose`, `treatment_duration`); `/data` and `/gene` get a Treatment column, a Treatment filter and treatment search; `/data` also gets a Setup filter (drug, virus, timecourse...). Needs one re-run of "Publish data to R2 staging".
 - M3b step 3: cell line context on the pages (`src/scripts/context.ts`). `/data` gains a Tissue filter, a "Key mutations in line" column (driver panel) and mutation search; `/gene` shows, per screen, the tissue and the looked-up gene's own mutation, expression and copy number in that line, with filters. Plain-language bands for expression and copy number are display aids, not statistical calls. CC BY 4.0 credit for DepMap and Cellosaurus. Pages work unchanged if the context is not published.
 - M3b step 2: cell line tables from DepMap 24Q4 (signatures, protein-altering mutations, expression, copy number) for the screened lines; per-gene JSON shards; manual workflow "Publish cell line context to R2 staging".
 - M3b step 1: cell line context pipeline (`datasets/cell-line-context/`): matches every ORCS screen's cell line to Cellosaurus (and through it to DepMap), never guessing ambiguous names; GitHub job downloads the sources, records licence evidence and reports coverage. Publishes nothing.

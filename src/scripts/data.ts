@@ -7,6 +7,14 @@ export interface Screen {
   phenotype: string; experimental_setup: string; scoring_method: string; result_scope: string;
   normalization_status: string; direction: string | null; direction_evidence: string | null;
   known_biology_pass: boolean | null; rows: number | null; hits: number | null;
+  /** Condition as the source names it (drug, virus, toxin...), null for untreated screens. */
+  treatment?: string | null; treatment_dose?: string | null; treatment_duration?: string | null;
+}
+
+/** "Olaparib (5.0 µM)", "Olaparib", or null when the screen names no condition. */
+export function treatmentLabel(s: Screen): string | null {
+  if (!s.treatment) return null;
+  return s.treatment_dose ? `${s.treatment} (${s.treatment_dose})` : s.treatment;
 }
 
 /** One result row for a gene: [screen index, effect_rank, effect_scaled, effect_z, hit 0/1, native score 1] */

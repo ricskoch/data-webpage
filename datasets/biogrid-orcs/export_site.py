@@ -2,7 +2,7 @@
 
 Usage: python3 -I export_site.py <work_dir>   (reads <work_dir>/out/*.parquet, writes <work_dir>/site/)
 
-screens.json   one row per screen: label, context, normalization status (the data overview)
+screens.json   one row per screen: label, context, treatment, normalization status (the data overview)
 summary.json   counts for the overview page
 genes.json     symbol -> [perturbation_id, shard] for the lookup box
 g/<NN>.json    per-perturbation rows: [screen index, effect_rank, effect_scaled, effect_z, hit, native score]
@@ -39,12 +39,26 @@ def screen_table(screens, studies, results):
     return out.where(out.notna(), None)
 
 
+def add_treatment(screens, conditions):
+    """Attach the named condition (drug, virus, toxin...) and its dose to each screen, as the source wrote them.
+
+    Untreated screens keep None. ORCS has at most one condition per screen; more would need a new layout, so fail.
+    """
+    if conditions["screen_id"].duplicated().any():
+        raise ValueError("more than one condition for a screen; the site bundle expects at most one")
+    c = conditions[["screen_id", "agent_label", "dose_raw", "duration"]].rename(
+        columns={"agent_label": "treatment", "dose_raw": "treatment_dose", "duration": "treatment_duration"})
+    out = screens.merge(c, on="screen_id", how="left").astype(object)
+    return out.where(out.notna(), None)
+
+
 def summary(screens):
     top = lambda c, n=12: screens[c].value_counts().head(n).to_dict()
     return {"screens": int(len(screens)), "studies": int(screens["study_id"].nunique()),
             "rows": int(screens["rows"].sum()), "by_status": top("normalization_status"),
             "by_perturbation": top("perturbation_type"), "by_selection": top("selection_type"),
             "top_cell_lines": top("cell_line_label"), "top_phenotypes": top("phenotype"),
+            "top_treatments": top("treatment"),
             "by_year": {int(k): int(v) for k, v in screens["year"].dropna().value_counts().sort_index().items()}}
 
 
@@ -68,6 +82,7 @@ def main(work):
             "source_row"]
     results = pd.read_parquet(out / "results.parquet", columns=cols)
     screens = screen_table(pd.read_parquet(out / "screens.parquet"), pd.read_parquet(out / "studies.parquet"), results)
+    screens = add_treatment(screens, pd.read_parquet(out / "conditions.parquet"))
     index = {sid: i for i, sid in enumerate(screens["screen_id"])}
     (site / "screens.json").write_text(json.dumps(screens.to_dict("records"), separators=(",", ":")))
     (site / "summary.json").write_text(json.dumps(summary(screens), indent=1))
