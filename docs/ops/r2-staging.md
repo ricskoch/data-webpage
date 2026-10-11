@@ -10,7 +10,7 @@ current docs; fix them when the dashboard differs.
 - This is staging, not a data release: the bioinformatician review and the `data-release` gate in spec 6.3 still apply.
 - The r2.dev URL is rate-limited and meant for development; production needs a custom domain with caching (spec 16.1).
 
-CORS policy on the bucket:
+CORS policy on the bucket (required: without it the pages show "Data not available. TypeError: Failed to fetch", even though the files open directly in a browser tab):
 ```json
 [{"AllowedOrigins": ["https://data-webpage.richard-izrael.workers.dev", "http://localhost:4321"],
   "AllowedMethods": ["GET", "HEAD"], "AllowedHeaders": ["Range"],
