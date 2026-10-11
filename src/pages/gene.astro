@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import ScoreExplainer from '../components/ScoreExplainer.astro';
 ---
 <Base title="Gene lookup · CRISPR Screen Explorer" description="Look up one gene across all human CRISPR screens in BioGRID ORCS, with each screen's context.">
   <h1>Gene lookup</h1>
@@ -9,11 +10,13 @@ import Base from '../layouts/Base.astro';
     <label>Gene symbol<br /><input id="q" name="g" autocomplete="off" placeholder="e.g. TP53" required /></label>
     <button type="submit">Look up</button>
   </form>
+  <ScoreExplainer />
   <div id="out" aria-live="polite"></div>
 </Base>
 
 <script>
   import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow } from '../scripts/data';
+  import { mountTable } from '../scripts/table';
 
   const out = document.getElementById('out')!;
   const input = document.getElementById('q') as HTMLInputElement;
@@ -45,11 +48,6 @@ import Base from '../layouts/Base.astro';
       const ranked = rows.filter((r) => r[1] !== null).sort((a, b) => a[1]! - b[1]!);
       const scaled = rows.map((r) => r[2]).filter((v): v is number => v !== null);
       const hits = rows.filter((r) => r[4] === 1).length;
-      const tr = (r: GeneRow) => { const s = screens![r[0]]; return `<tr>
-        <td>${escapeHtml(s.author_label ?? s.study_id)}</td><td>${escapeHtml(s.cell_line_label)}</td>
-        <td>${escapeHtml(s.phenotype)}</td><td>${escapeHtml(label(s.selection_type))}</td>
-        <td class="num">${fmt(r[1])}</td><td class="num">${fmt(r[2])}</td><td class="num">${fmt(r[3])}</td>
-        <td>${r[4] ? 'yes' : 'no'}</td><td class="num">${fmt(r[5], 3)} <small>${escapeHtml(s.scoring_method)}</small></td></tr>`; };
       history.replaceState(null, '', `?g=${encodeURIComponent(key)}`);
       out.innerHTML = `
         <h2><span class="gene">${escapeHtml(key)}</span></h2>
@@ -62,11 +60,34 @@ import Base from '../layouts/Base.astro';
         </ul>
         <figure>${strip(ranked.map((r) => r[1]!))}
           <figcaption>Fig. 1. Rank of <span class="gene">${escapeHtml(key)}</span> within each comparable screen. A gene that is essential everywhere sits at the left.</figcaption></figure>
-        <div class="table-box" tabindex="0" role="region" aria-label="Results table"><table>
-          <caption>Table 1. Every screen result for this gene, most depleted first. Rank: 0 to 1. Scale: 0 = like a non-essential gene, −1 = like a core-essential gene.</caption>
-          <thead><tr><th>Study</th><th>Cell line</th><th>Phenotype</th><th>Selection</th><th class="num">Rank</th><th class="num">Scale</th><th class="num">Robust z</th><th>Hit</th><th class="num">Native score</th></tr></thead>
-          <tbody>${[...ranked, ...rows.filter((r) => r[1] === null)].map(tr).join('')}</tbody>
-        </table></div>`;
+        <h3>Every screen result for this gene</h3>
+        <div id="results"></div>`;
+      type Row = { s: Screen; rank: number | null; scale: number | null; z: number | null; hit: number; native: number | null };
+      const data: Row[] = rows.map((r) => ({ s: screens![r[0]], rank: r[1], scale: r[2], z: r[3], hit: r[4], native: r[5] }));
+      const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
+      mountTable<Row>(document.getElementById('results')!, {
+        rows: data, noun: 'screen results', label: 'Results table', sort: { column: 4, dir: 'asc' },
+        caption: 'Table 1. Results for this gene, most depleted first. Rank: 0 to 1. Scale: 0 = like a non-essential gene, −1 = like a core-essential gene.',
+        search: { label: 'Search study or cell line', in: [(r) => r.s.author_label, (r) => r.s.study_id, (r) => r.s.cell_line_label] },
+        facets: [
+          { key: 'cell', label: 'Cell line', get: (r) => r.s.cell_line_label },
+          { key: 'phenotype', label: 'Phenotype', get: (r) => r.s.phenotype },
+          { key: 'selection', label: 'Selection', get: (r) => r.s.selection_type, show: label },
+          { key: 'status', label: 'Comparable as', get: (r) => r.s.normalization_status, show: label },
+          { key: 'hit', label: 'Hit', get: (r) => (r.hit ? 'yes' : 'no') },
+        ],
+        columns: [
+          { label: 'Study', cell: (r) => text(r.s.author_label ?? r.s.study_id), sort: (r) => r.s.author_label ?? r.s.study_id },
+          { label: 'Cell line', cell: (r) => text(r.s.cell_line_label), sort: (r) => r.s.cell_line_label },
+          { label: 'Phenotype', cell: (r) => text(r.s.phenotype), sort: (r) => r.s.phenotype },
+          { label: 'Selection', cell: (r) => text(label(r.s.selection_type)), sort: (r) => r.s.selection_type },
+          { label: 'Rank', cell: (r) => fmt(r.rank), sort: (r) => r.rank, num: true },
+          { label: 'Scale', cell: (r) => fmt(r.scale), sort: (r) => r.scale, num: true },
+          { label: 'Robust z', cell: (r) => fmt(r.z), sort: (r) => r.z, num: true },
+          { label: 'Hit', cell: (r) => (r.hit ? 'yes' : 'no'), sort: (r) => r.hit },
+          { label: 'Native score', cell: (r) => `${fmt(r.native, 3)} <small>${text(r.s.scoring_method)}</small>`, sort: (r) => r.native, num: true },
+        ],
+      });
     } catch (err) {
       out.innerHTML = `<p class="notice"><strong>Data not available.</strong> ${escapeHtml(String(err))}</p>`;
     }

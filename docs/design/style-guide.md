@@ -56,6 +56,8 @@ New colours need a contrast check before use.
 - **Notice:** vellum box with a double pencil rule, like a specimen label (`.notice`).
 - **Plates:** icon cards in a responsive grid (`.plates`).
 - **Tables:** inside `.table-box` (scrolls sideways on phones), ink rule under the header. Give the box `tabindex="0" role="region" aria-label="…"` so keyboard users can scroll it (axe rule scrollable-region-focusable).
+- **Data tables:** use `mountTable` (`src/scripts/table.ts`): filters as a grid above the table, sortable headers (`aria-sort`), a pager below. Never render more than one page of rows.
+- **Explainer:** `<details class="explainer">` with a definition list, for "how to read this" keys.
 - **Divider:** `rule.svg` (`.rule`) between major sections, at most once or twice a page.
 
 ## Layout and accessibility
