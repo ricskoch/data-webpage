@@ -26,3 +26,6 @@ The spec in `docs/spec.md` is the source of truth. If a task conflicts with it, 
 ## Where things live
 - `docs/` spec, ADRs (`docs/adr/`), runbooks (`docs/ops/`), learning notes (`docs/learning/`).
 - Code layout is decided in M1 and recorded as an ADR.
+
+## Instructions for third-party dashboards
+Menus and defaults for services such as Cloudflare and GitHub change often. Never write click-by-click steps from memory as if they were certain: check current documentation where possible, say when you could not, and fix the docs as soon as the human reports a difference.

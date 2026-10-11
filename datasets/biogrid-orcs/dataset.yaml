@@ -1,0 +1,59 @@
+# BioGRID ORCS adapter configuration (M2b). Mapping changes are reviewed as diffs of this file.
+id: biogrid-orcs
+collection: crispr-human
+source:
+  release: "2.0.18"
+  organism: homo_sapiens
+  url: https://downloads.thebiogrid.org/Download/BioGRID-ORCS/Release-Archive/BIOGRID-ORCS-2.0.18/BIOGRID-ORCS-ALL-homo_sapiens-2.0.18.screens.tar.gz
+  bytes: 752653348
+  sha256: 39222a9650eed083edf193debe45eedc4aabc779ca04ea70107b6bd1efd9b8d7
+  index_glob: "*SCREEN_INDEX*.index.tab.txt"
+  screen_glob: "*.screen.tab.txt"
+  missing_value: "-"
+licence:
+  id: MIT
+  notice: datasets/biogrid-orcs/LICENCE-SOURCE.md
+
+expected_columns:
+  screen: ["SCREEN_ID", "IDENTIFIER_ID", "IDENTIFIER_TYPE", "OFFICIAL_SYMBOL", "ALIASES", "ORGANISM_ID",
+           "ORGANISM_OFFICIAL", "SCORE.1", "SCORE.2", "SCORE.3", "SCORE.4", "SCORE.5", "HIT", "SOURCE"]
+  index_required: ["SCREEN_ID", "SOURCE_ID", "SOURCE_TYPE", "AUTHOR", "SCORES_SIZE", "FULL_SIZE_AVAILABLE",
+                   "NUMBER_OF_HITS", "ANALYSIS", "SIGNIFICANCE_CRITERIA", "SCREEN_TYPE", "SCREEN_FORMAT",
+                   "EXPERIMENTAL_SETUP", "DURATION", "CONDITION_NAME", "CONDITION_DOSAGE", "LIBRARY",
+                   "LIBRARY_TYPE", "ENZYME", "CELL_LINE", "CELL_TYPE", "PHENOTYPE", "SCORE_COL_COUNT",
+                   "SCORE.1_TYPE", "SCORE.2_TYPE", "SCORE.3_TYPE", "SCORE.4_TYPE", "SCORE.5_TYPE", "ORGANISM_ID"]
+organism_id: "9606"
+
+mappings:
+  # LIBRARY_TYPE -> screens.perturbation_type
+  perturbation_type:
+    CRISPRn: knockout
+    CRISPRi: crispri
+    CRISPRa: crispra
+    Cytosine Base Editing-Mediated Gene KnockOut: base_edit
+  # SCREEN_TYPE -> screens.selection_type
+  selection_type:
+    Negative Selection: negative
+    Positive Selection: positive
+    Positive and Negative Selection: positive_and_negative
+    Phenotype Screen: sorting
+    Unknown: other
+  # FULL_SIZE_AVAILABLE -> screens.result_scope (profile proposal 4)
+  result_scope:
+    "Yes": all_genes
+    "No": hits_only
+  # IDENTIFIER_TYPE values that are not a usable Entrez Gene ID get gene_id = null with this reason (proposal 5)
+  unresolved_identifier:
+    UNKNOWN: unknown_identifier
+    AMBIGUOUS: ambiguous_identifier
+  # Unresolved rows whose symbol matches one of these (case-insensitive regex) are controls, not genes.
+  # Seen in 2.0.18: NTC 13,062 rows, NonTargetingControlGuideForHuman_*, LacZ 81, luciferase 76, EGFP 74.
+  control_symbol_patterns: ["^ntc$", "^non-?targeting", "^safe-?targeting", "^lacz$", "^luciferase$", "^egfp$"]
+
+validation:
+  max_row_count_change: 0.20   # vs previous version; flag only
+parquet:
+  row_group_size: 100000
+  sort_by: ["perturbation_id", "screen_id"]
+  # Genes used to measure how much one lookup has to read (TP53, RPL3, the NTC non-targeting control)
+  probe_ids: ["entrez:7157", "entrez:6122", "orcs:77294U"]
