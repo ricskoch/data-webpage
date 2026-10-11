@@ -26,6 +26,18 @@ jobs:
           if [ -n "$bad$big" ]; then echo "Data or large files found:"; echo "$bad"; echo "$big"; exit 1; fi
       - name: Required docs exist
         run: test -f docs/spec.md && test -f AGENTS.md
+  data-pipeline-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: datasets/biogrid-orcs/requirements.txt
+      - run: pip install -r datasets/biogrid-orcs/requirements.txt
+      - name: Adapter unit tests
+        run: python -m unittest discover -s datasets/biogrid-orcs/tests -v
   site:
     runs-on: ubuntu-latest
     steps:
