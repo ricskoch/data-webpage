@@ -11,16 +11,23 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   <p>Narrow the list with the filters; click a column header to sort.</p>
   <ScoreExplainer />
   <div id="screens"><p>Loading the screens…</p></div>
+  <p id="credit"></p>
 </Base>
 
 <script>
   import { getJSON, bars, label, escapeHtml, type Screen } from '../scripts/data';
   import { mountTable } from '../scripts/table';
+  import { loadLines, credit, type Line } from '../scripts/context';
 
   const box = document.getElementById('overview')!;
   async function main() {
   try {
-    const [summary, screens] = await Promise.all([getJSON<any>('summary.json'), getJSON<Screen[]>('screens.json')]);
+    const [summary, screens, lines] = await Promise.all([getJSON<any>('summary.json'), getJSON<Screen[]>('screens.json'), loadLines()]);
+    // Cell line context (DepMap + Cellosaurus) is optional: without it the table keeps its original columns.
+    const lineOf = (s: Screen): Line | null => {
+      const i = lines?.screen_line[String(s.screen_id)];
+      return i === undefined ? null : lines!.lines[i];
+    };
     const n = summary.screens;
     box.innerHTML = `
       <ul class="stats">
@@ -40,10 +47,11 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       <ul class="bars">${bars(summary.top_cell_lines, n)}</ul>`;
 
     const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
+    if (lines) document.getElementById('credit')!.innerHTML = credit(lines);
     mountTable<Screen>(document.getElementById('screens')!, {
       rows: screens, noun: 'screens', label: 'Screens table',
       caption: 'Table 1. Screens in the collection. Genes = number of gene results in the screen.',
-      search: { label: 'Search study, cell line or phenotype', in: [(s) => s.author_label, (s) => s.study_id, (s) => s.cell_line_label, (s) => s.phenotype] },
+      search: { label: lines ? 'Search study, cell line, phenotype or mutated gene' : 'Search study, cell line or phenotype', in: [(s) => s.author_label, (s) => s.study_id, (s) => s.cell_line_label, (s) => s.phenotype, (s) => lineOf(s)?.drivers.join(' ')] },
       facets: [
         { key: 'cell', label: 'Cell line', get: (s) => s.cell_line_label },
         { key: 'study', label: 'Study', get: (s) => s.author_label ?? s.study_id },
@@ -52,6 +60,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         { key: 'type', label: 'Type', get: (s) => s.perturbation_type, show: label },
         { key: 'selection', label: 'Selection', get: (s) => s.selection_type, show: label },
         { key: 'status', label: 'Comparable as', get: (s) => s.normalization_status, show: label },
+        ...(lines ? [{ key: 'tissue', label: 'Tissue', get: (s: Screen) => lineOf(s)?.lineage }] : []),
       ],
       columns: [
         { label: 'Study', cell: (s) => text(s.author_label ?? s.study_id), sort: (s) => s.author_label ?? s.study_id },
@@ -63,6 +72,15 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         { label: 'Phenotype', cell: (s) => text(s.phenotype), sort: (s) => s.phenotype },
         { label: 'Genes', cell: (s) => (s.rows ?? 0).toLocaleString('en'), sort: (s) => s.rows, num: true },
         { label: 'Comparable as', cell: (s) => text(label(s.normalization_status)), sort: (s) => s.normalization_status },
+        ...(lines ? [
+          { label: 'Tissue', cell: (s: Screen) => text(lineOf(s)?.lineage), sort: (s: Screen) => lineOf(s)?.lineage },
+          { label: 'Key mutations in line', cell: (s: Screen) => {
+            const l = lineOf(s);
+            if (!l) return '–';
+            const flag = l.problematic ? ' <small>line flagged by Cellosaurus (misidentified or contaminated)</small>' : '';
+            return (l.drivers.length ? escapeHtml(l.drivers.join(', ')) : 'none in panel') + flag;
+          }, sort: (s: Screen) => lineOf(s)?.drivers.length, num: true },
+        ] : []),
       ],
     });
   } catch (err) {
