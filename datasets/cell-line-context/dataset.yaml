@@ -34,3 +34,8 @@ sources:
 # ORCS cell line label -> Cellosaurus accession, for names the matcher reports as ambiguous or not found.
 # Every entry needs a reason in a comment. Changes are reviewed as diffs of this file.
 overrides: {}
+
+build:
+  # Genes shown on the context card ("which well-known cancer genes are mutated in this line").
+  driver_panel: [TP53, KRAS, NRAS, HRAS, BRAF, PIK3CA, PTEN, APC, CTNNB1, CDKN2A, RB1, SMAD4, ARID1A, SMARCA4,
+                 NF1, EGFR, ERBB2, STK11, KEAP1, IDH1, FBXW7, BRCA1, BRCA2, ATM, MTAP]
