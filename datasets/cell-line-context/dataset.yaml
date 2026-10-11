@@ -1,0 +1,31 @@
+# Cell line context (M3b): who each screened cell line is, and later its mutations, expression and copy number.
+# Approved as sources by Richard on 2026-10-11 (thread "M3"). Licences must be confirmed from the
+# evidence in report.md before anything is published.
+id: cell-line-context
+taxon: "9606"
+sources:
+  cellosaurus:
+    url: https://ftp.expasy.org/databases/cellosaurus/cellosaurus.txt
+    licence_page: https://www.cellosaurus.org/description.html
+    licence_expected: CC BY 4.0   # to confirm
+  orcs_screens:
+    # The prototype site bundle already lists every ORCS screen with its cell line label.
+    url: https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/biogrid-orcs/0.1.0-staging/site/screens.json
+  depmap:
+    listing_url: https://depmap.org/portal/api/download/files
+    licence_page: https://depmap.org/portal/terms/
+    licence_expected: CC BY 4.0   # to confirm
+    release_pattern: "^DepMap Public"
+    # File names change between releases, so match by pattern; the report lists what was found.
+    files:
+      models: "^Model\\.csv$"
+      profiles: "^OmicsProfiles\\.csv$"
+      signatures: "^OmicsSignatures.*\\.csv$"
+      mutations: "^OmicsSomaticMutations\\.csv$"
+      expression: "^OmicsExpression.*ProteinCoding.*TPMLogp1.*\\.csv$"
+      copy_number: "^OmicsCNGene.*\\.csv$"
+      arm_cna: "^OmicsArmLevelCNA.*\\.csv$"
+
+# ORCS cell line label -> Cellosaurus accession, for names the matcher reports as ambiguous or not found.
+# Every entry needs a reason in a comment. Changes are reviewed as diffs of this file.
+overrides: {}

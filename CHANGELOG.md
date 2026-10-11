@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- M3b step 1: cell line context pipeline (`datasets/cell-line-context/`): matches every ORCS screen's cell line to Cellosaurus (and through it to DepMap), never guessing ambiguous names; GitHub job downloads the sources, records licence evidence and reports coverage. Publishes nothing.
 - M3 quick win (F4, F20, F21): the screens table on `/data` and the results table on `/gene` get filters (cell line, study, library, phenotype, selection, comparability, hit), a text search, column sorting and 25/50/100-row pages (`src/scripts/table.ts`). New plain-language key to the scores (`ScoreExplainer`) on both pages.
 - Prototype: Data overview (`/data`) and Gene lookup (`/gene`) pages reading JSON from the R2 staging bucket; `export_site.py`; manual "Publish data to R2 staging" workflow; runbook `docs/ops/r2-staging.md`.
 - M2b part 2: comparable score columns (levels A, B, C), score family table in `dataset.yaml`, direction rules, known-biology summary.
