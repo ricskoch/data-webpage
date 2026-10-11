@@ -165,7 +165,7 @@ def write_parquet(out, results, tables):
 
 
 def gene_slice_bytes(path, perturbation_id):
-    """Compressed bytes of the row groups a reader must fetch for one perturbation, from min/max statistics."""
+    """Compressed bytes (all columns, an upper bound) of the row groups a reader must fetch for one perturbation."""
     import pyarrow.parquet as papq
     meta = papq.ParquetFile(path).metadata
     col = meta.schema.names.index("perturbation_id")
@@ -173,7 +173,8 @@ def gene_slice_bytes(path, perturbation_id):
     for g in range(meta.num_row_groups):
         st = meta.row_group(g).column(col).statistics
         if st is None or not st.has_min_max or st.min <= perturbation_id <= st.max:
-            total += meta.row_group(g).total_compressed_size
+            rg = meta.row_group(g)
+            total += sum(rg.column(i).total_compressed_size for i in range(rg.num_columns))
             groups += 1
     return {"perturbation_id": perturbation_id, "row_groups": groups, "of_row_groups": meta.num_row_groups,
             "compressed_bytes": total}
