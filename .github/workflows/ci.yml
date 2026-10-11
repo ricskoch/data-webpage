@@ -40,6 +40,12 @@ jobs:
         run: python -m unittest discover -s datasets/biogrid-orcs/tests -v
       - name: Cell line context unit tests
         run: python -m unittest discover -s datasets/cell-line-context/tests -v
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: pip install -r tests/reference/requirements.txt
+      - name: Recipe statistics against SciPy (independent reference, spec section 14)
+        run: python -m unittest discover -s tests/reference -v
   site:
     runs-on: ubuntu-latest
     steps:
