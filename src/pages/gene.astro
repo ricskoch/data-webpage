@@ -15,7 +15,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 </Base>
 
 <script>
-  import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow } from '../scripts/data';
+  import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
 
   const out = document.getElementById('out')!;
@@ -68,10 +68,11 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       mountTable<Row>(document.getElementById('results')!, {
         rows: data, noun: 'screen results', label: 'Results table', sort: { column: 4, dir: 'asc' },
         caption: 'Table 1. Results for this gene, most depleted first. Rank: 0 to 1. Scale: 0 = like a non-essential gene, −1 = like a core-essential gene.',
-        search: { label: 'Search study or cell line', in: [(r) => r.s.author_label, (r) => r.s.study_id, (r) => r.s.cell_line_label] },
+        search: { label: 'Search study, cell line or treatment', in: [(r) => r.s.author_label, (r) => r.s.study_id, (r) => r.s.cell_line_label, (r) => r.s.treatment] },
         facets: [
           { key: 'cell', label: 'Cell line', get: (r) => r.s.cell_line_label },
           { key: 'phenotype', label: 'Phenotype', get: (r) => r.s.phenotype },
+          { key: 'treatment', label: 'Treatment', get: (r) => r.s.treatment ?? 'none' },
           { key: 'selection', label: 'Selection', get: (r) => r.s.selection_type, show: label },
           { key: 'status', label: 'Comparable as', get: (r) => r.s.normalization_status, show: label },
           { key: 'hit', label: 'Hit', get: (r) => (r.hit ? 'yes' : 'no') },
@@ -80,6 +81,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           { label: 'Study', cell: (r) => text(r.s.author_label ?? r.s.study_id), sort: (r) => r.s.author_label ?? r.s.study_id },
           { label: 'Cell line', cell: (r) => text(r.s.cell_line_label), sort: (r) => r.s.cell_line_label },
           { label: 'Phenotype', cell: (r) => text(r.s.phenotype), sort: (r) => r.s.phenotype },
+          { label: 'Treatment', cell: (r) => text(treatmentLabel(r.s)), sort: (r) => r.s.treatment },
           { label: 'Selection', cell: (r) => text(label(r.s.selection_type)), sort: (r) => r.s.selection_type },
           { label: 'Rank', cell: (r) => fmt(r.rank), sort: (r) => r.rank, num: true },
           { label: 'Scale', cell: (r) => fmt(r.scale), sort: (r) => r.scale, num: true },

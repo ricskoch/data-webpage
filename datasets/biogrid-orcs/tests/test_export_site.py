@@ -29,6 +29,22 @@ class ExportSite(unittest.TestCase):
         self.assertEqual(g1, [[0, 0.1, None, -1.0, 1, -0.5], [1, None, None, None, 0, 3.0]])
         self.assertEqual(sum(len(v) for s in shards.values() for v in s.values()), 3)
 
+    def test_treatment_joined_to_screens(self):
+        screens = pd.DataFrame({"screen_id": ["orcs:1", "orcs:2"], "experimental_setup": ["Drug Exposure", "Timecourse"]})
+        cond = pd.DataFrame({"screen_id": ["orcs:1"], "agent_label": ["Olaparib"], "dose_raw": ["5.0 \u00b5M"],
+                             "duration": [None]})
+        out = export_site.add_treatment(screens, cond)
+        self.assertEqual(out["treatment"].tolist(), ["Olaparib", None])
+        self.assertEqual(out["treatment_dose"].tolist(), ["5.0 \u00b5M", None])
+        self.assertEqual(len(out), 2)  # untreated screens are kept, not dropped
+
+    def test_treatment_rejects_two_conditions_per_screen(self):
+        screens = pd.DataFrame({"screen_id": ["orcs:1"]})
+        cond = pd.DataFrame({"screen_id": ["orcs:1", "orcs:1"], "agent_label": ["A", "B"], "dose_raw": [None, None],
+                             "duration": [None, None]})
+        with self.assertRaises(ValueError):
+            export_site.add_treatment(screens, cond)
+
 
 if __name__ == "__main__":
     unittest.main()
