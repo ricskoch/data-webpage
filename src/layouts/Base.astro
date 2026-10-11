@@ -9,6 +9,8 @@ const { title, description } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const nav = [
   { href: '/', label: 'Home' },
+  { href: '/data', label: 'Data' },
+  { href: '/gene', label: 'Gene lookup' },
   { href: '/about', label: 'About' },
   { href: '/data-policy', label: 'Data policy' },
 ];
