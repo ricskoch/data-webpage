@@ -1,7 +1,7 @@
-# Scientific Data Explorer: Scope and Architecture Spec (v0.2)
+# Scientific Data Explorer: Scope and Architecture Spec (v0.3)
 
 Owner: Richard. Status: draft for approval. No implementation until sections 3 and 10 are signed off.
-Date: 2026-10-11. v0.2 revises v0.1 after your review comments.
+Date: 2026-10-11. v0.2 revises v0.1 after your review comments. v0.3 adds the score normalization design (sections 12.2, 12.3, 12.8; details in `docs/score-normalization.md`), approved by the owner on 2026-10-11 and still awaiting bioinformatician review.
 
 **What changed in v0.2** (new material is in sections 12 to 17; the earlier sections are patched where noted):
 1. The product is now defined by one unified CRISPR data model (monogenic, combinatorial, drug + CRISPR) that makes screens from any source browsable and comparable, with experiment metadata attached (section 12). This replaces the "one dataset = one page" view as the core idea.
@@ -376,10 +376,11 @@ The unit users explore is a **collection** (`crispr-human`), not a source file. 
 | Table | One row per | Key fields |
 |---|---|---|
 | `studies` | publication / source release | study_id, pubmed_id, doi, title, year, source_dataset, source_release, licence_id |
-| `screens` | screen as reported by the source | screen_id (ours, stable), source_screen_id, study_id, organism (human only now), cell_line_id, cell_line_label, lineage, disease_context, library_name, library_type, perturbation_type (knockout / CRISPRi / CRISPRa / base edit / other), cas_system, screen_format (**monogenic / combinatorial / drug_crispr**), phenotype, selection_type (negative / positive / sorting / other), timepoint, replicate_count, scoring_method, score_unit, hit_rule_source, metadata_quality (complete / partial / free_text_only) |
+| `screens` | screen as reported by the source | screen_id (ours, stable), source_screen_id, study_id, organism (human only now), cell_line_id, cell_line_label, lineage, disease_context, library_name, library_type, perturbation_type (knockout / CRISPRi / CRISPRa / base edit / other), cas_system, screen_format (**monogenic / combinatorial / drug_crispr**), phenotype, selection_type (negative / positive / sorting / other), timepoint, replicate_count, scoring_method, score_unit, hit_rule_source, metadata_quality (complete / partial / free_text_only), result_scope (all_genes / hits_only), normalization_status (anchored / rank_only / robust_z / not_comparable), n_ceg_present, n_neg_present |
 | `conditions` | treatment or control arm of a screen | condition_id, screen_id, role (control / treatment), agent_label, agent_id (ChEMBL or PubChem when mappable), dose, dose_unit, duration |
 | `perturbations` | thing that was perturbed | perturbation_id, kind (single / pair), gene_a_id, gene_b_id (null for single), symbols |
-| `results` | screen x perturbation | screen_id, perturbation_id, effect (standardized, negative = depleted), effect_native, score_name, rank_percentile (within screen), p_value, fdr, hit_source (as reported), hit_standard (computed uniformly by our pipeline), interaction_score (combinatorial only, else null) |
+| `score_defs` | native score column of a screen | screen_id, position (1 to 5), native_name, method_family, reference_contrast, signed, direction (lower_is_depleted / higher_is_depleted / unsigned / unknown), direction_evidence (documented / known_biology_test / human_confirmed / unresolved) |
+| `results` | screen x perturbation | screen_id, perturbation_id, score_1..score_5 (native, never overwritten), effect_rank (Level A, 0 = most depleted), effect_scaled (Level B, null if not anchored), effect_z (Level C), source_row, p_value, fdr, hit_source (as reported), hit_standard (computed uniformly by our pipeline), interaction_score (combinatorial only, else null) |
 | `gene_ids` | gene | gene_id (Entrez), hgnc_id, ensembl_id, symbol, aliases |
 | `vocab_map` | normalization rule | raw_value, field, canonical_id, canonical_label, mapping_status (exact / curated / unmapped), reviewed_by, reviewed_on |
 
@@ -389,7 +390,7 @@ How the three screen formats fit:
 - **Drug + CRISPR:** one or more `conditions` with role = treatment and an agent; comparisons between treatment and control arms are stored as their own `screens` rows linked by `parent_screen_id`.
 
 ### 12.3 Comparability rules (the bioinformatics core)
-1. **Native scores are never plotted on a shared axis without a warning.** BioGRID ORCS holds scores from different methods and scales (for example log fold change, Bayes factor, z-score, MAGeCK-type scores). The pipeline keeps the native score and also stores `rank_percentile` and a direction-aligned `effect`.
+1. **Native scores are never plotted on a shared axis without a warning.** BioGRID ORCS holds scores from different methods and scales (for example log fold change, Bayes factor, z-score, MAGeCK-type scores). The pipeline keeps the native scores and adds three direction-aligned columns: `effect_rank` (Level A), `effect_scaled` (Level B) and `effect_z` (Level C), see 12.8.
 2. **Default cross-screen comparison is rank-based** (percentile within screen, Spearman correlation), because ranks do not depend on score scale.
 3. **Hit calls come in two forms:** `hit_source` as the source reported it, and `hit_standard` from one documented rule applied the same way to all screens. UI labels them separately. Where no standard rule can be applied (missing scores), `hit_standard` is null, not guessed.
 4. **Only compare what was tested.** Comparisons use the set of genes tested in both screens, and show that number.
@@ -404,6 +405,15 @@ From knowledge of the format, not from this file: one tab-delimited results file
 
 ### 12.6 Metadata caveats users must see
 Metadata from curated databases is incomplete and sometimes free text. The UI shows `metadata_quality` per screen and does not use "similar background" matching on screens marked `free_text_only`.
+
+### 12.8 Score normalization (approved levels A, B, C)
+Scores cannot be converted to one physical unit (Bayes factors, p-values and ranks discard effect size), so three levels are stored beside the native scores:
+- **A, `effect_rank`:** rank percentile within the screen after direction alignment. Needs a signed score and the full gene list. Default for cross-screen comparison.
+- **B, `effect_scaled`:** `(score - median_NEG) / (median_NEG - median_CEG)` using Hart NEGv1 and CEGv2: 0 = like a non-essential gene, -1 = like a core-essential gene. Only for negative-selection screens with a full gene list, a monotone score and at least 50 reference genes of each set present (1,402 of 1,952 screens in the 2.0.18 profile). Shown with the label "scale anchored on core-essential genes". The reference sets define the scale, so the known-biology check uses disjoint halves or other sets.
+- **C, `effect_z`:** robust z, `(score - median) / (1.4826 x MAD)`, fallback for screens that cannot be anchored (drug, positive selection, sorting).
+- **D (recompute from guide counts) is out of scope** until a source provides counts.
+
+Direction is decided in order: documented method convention, known-biology test, human confirmation per study, else `unknown` and the `effect_*` columns stay null. Never guessed. Native scores and their definitions (`score_defs`) are shown next to every value.
 
 ### 12.7 Hooks for the future (not built now)
 - Every table carries `data_type = crispr_screen`; new types (expression, proteomics, etc.) get their own collection with the same manifest format and shared entity tables (`gene_ids`, cell lines).
@@ -424,10 +434,10 @@ Metadata from curated databases is incomplete and sometimes free text. The UI sh
 
 ### 13.2 Metrics (v1)
 1. Number of shared tested genes (required to be shown first).
-2. Spearman correlation of `effect` on shared genes (rank-based).
+2. Spearman correlation of `effect_rank` on shared genes (rank-based).
 3. Overlap of `hit_standard` hits: count, Jaccard index, and hypergeometric p-value with the shared tested genes as background.
 4. Recovery of reference gene sets, if licences allow (for example published core-essential and non-essential lists such as Hart et al. sets): AUC per screen, to show whether each screen separates known essentials from non-essentials. A screen that fails this is flagged as low technical quality, which explains weak agreement.
-5. Plots: scatter of effect (rank-rank option), overlap-by-rank curve, summary table.
+5. Plots: scatter of effect_rank (rank-rank option), overlap-by-rank curve, summary table.
 
 ### 13.3 Caveats shown on the page
 Different libraries test different genes; different scoring methods weaken correlation; low shared-gene count; positive-selection screens have few hits; correlation of near-zero effects is noise; the result describes agreement, not biological truth.
