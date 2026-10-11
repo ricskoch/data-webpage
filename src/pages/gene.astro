@@ -66,7 +66,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       const data: Row[] = rows.map((r) => ({ s: screens![r[0]], rank: r[1], scale: r[2], z: r[3], hit: r[4], native: r[5] }));
       const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
       mountTable<Row>(document.getElementById('results')!, {
-        rows: data, noun: 'screen results', label: 'Results table', sort: { column: 4, dir: 'asc' },
+        rows: data, noun: 'screen results', label: 'Results table', sort: { column: 5, dir: 'asc' },
         caption: 'Table 1. Results for this gene, most depleted first. Rank: 0 to 1. Scale: 0 = like a non-essential gene, −1 = like a core-essential gene.',
         search: { label: 'Search study, cell line or treatment', in: [(r) => r.s.author_label, (r) => r.s.study_id, (r) => r.s.cell_line_label, (r) => r.s.treatment] },
         facets: [
