@@ -23,6 +23,7 @@ import yaml
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import adapter  # noqa: E402
+import normalize  # noqa: E402
 
 CONFIG = yaml.safe_load((HERE / "dataset.yaml").read_text())
 CATEGORICAL = ["screen_id", "perturbation_id", "gene_id_status", "symbol"]
@@ -52,9 +53,14 @@ def fetch(work):
     digest = sha256(target)
     if digest != src["sha256"]:
         sys.exit(f"checksum mismatch: got {digest}")
-    (raw / "fetch.json").write_text(json.dumps({"url": src["url"], "bytes": target.stat().st_size, "sha256": digest,
-                                                "retrieved_at": dt.datetime.now(dt.UTC).isoformat()}, indent=2))
-    print(f"fetched {target.name}, checksum ok")
+    record = {"url": src["url"], "bytes": target.stat().st_size, "sha256": digest,
+              "retrieved_at": dt.datetime.now(dt.UTC).isoformat(), "reference_sets": {}}
+    for name, url in CONFIG["reference_sets"].items():
+        path = raw / f"{name}.txt"
+        subprocess.run(["curl", "-sS", "-L", "--fail", "--retry", "3", "-o", str(path), url], check=True)
+        record["reference_sets"][name] = {"url": url, "sha256": sha256(path)}
+    (raw / "fetch.json").write_text(json.dumps(record, indent=2))
+    print(f"fetched {target.name}, checksum ok; reference sets {record['reference_sets']}")
 
 
 def extract(work):
@@ -116,8 +122,11 @@ def convert(work, dry_run):
     rejected = pd.concat(rejected, ignore_index=True)
 
     screens = adapter.to_screens(index, CONFIG)
-    tables = {"screens": screens, "studies": adapter.to_studies(index, CONFIG),
-              "score_defs": adapter.to_score_defs(index), "conditions": adapter.to_conditions(index)}
+    ceg, neg = (normalize.read_reference(work / "raw" / f"{n}.txt") for n in ("ceg", "neg"))
+    results, scored, score_defs = normalize.apply_normalization(results, screens, adapter.to_score_defs(index),
+                                                                ceg, neg, CONFIG)
+    tables = {"screens": scored, "studies": adapter.to_studies(index, CONFIG),
+              "score_defs": score_defs, "conditions": adapter.to_conditions(index)}
     tables["perturbations"] = (results[["perturbation_id", "gene_id", "symbol"]].astype({"perturbation_id": str})
                                .drop_duplicates("perturbation_id").assign(kind="single").reset_index(drop=True))
     count_problems = adapter.check_screen_counts(screens, results, rejected)
@@ -135,6 +144,7 @@ def convert(work, dry_run):
                                                    .size().gt(1).sum()),
         "unmapped": {c: screens.loc[screens[c].eq("unmapped"), c].size
                      for c in ["perturbation_type", "selection_type", "result_scope"]},
+        "known_biology": normalize.known_biology_summary(results, scored, CONFIG),
         "blocking_problems": blocking,
         "passed": not blocking,
     }
