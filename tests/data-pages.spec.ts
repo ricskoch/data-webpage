@@ -89,9 +89,9 @@ test('/data: tissue filter and key mutations from the cell line context', async 
   const count = page.locator('#screens [data-count]');
   await page.getByLabel('Tissue', { exact: true }).selectOption('Myeloid');
   await expect(count).toHaveText('20 of 60 screens match.');
-  await expect(page.locator('#screens tbody tr').first().locator('td').nth(10)).toHaveText('TP53 p.Q136fs');
+  await expect(page.locator('#screens tbody tr').first().locator('td').nth(11)).toHaveText('TP53 p.Q136fs');
   await page.getByRole('button', { name: 'Clear filters' }).click();
-  await page.getByLabel('Search study, cell line, phenotype or mutated gene').fill('TP53');
+  await page.getByLabel('Search study, cell line, phenotype, treatment or mutated gene').fill('TP53');
   await expect(count).toHaveText('20 of 60 screens match.');
   await expect(page.getByText('both CC BY 4.0')).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
@@ -106,10 +106,10 @@ test('/gene: the gene\'s own mutation, expression and copy number in each screen
   await page.getByLabel('TP53 mutated in line', { exact: true }).selectOption('yes');
   await expect(page.locator('#results [data-count]')).toHaveText('20 of 60 screen results match.');
   const row = page.locator('#results tbody tr').first();
-  await expect(row.locator('td').nth(9)).toHaveText('Myeloid');
-  await expect(row.locator('td').nth(10)).toHaveText('p.Q136fs (loss of function)');
-  await expect(row.locator('td').nth(11)).toHaveText('0.4 off');
-  await expect(row.locator('td').nth(12)).toHaveText('0.10 deep loss');
+  await expect(row.locator('td').nth(10)).toHaveText('Myeloid');
+  await expect(row.locator('td').nth(11)).toHaveText('p.Q136fs (loss of function)');
+  await expect(row.locator('td').nth(12)).toHaveText('0.4 off');
+  await expect(row.locator('td').nth(13)).toHaveText('0.10 deep loss');
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });
