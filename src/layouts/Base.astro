@@ -20,12 +20,13 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="icon" href="/icons/cas9.svg" type="image/svg+xml" />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site">
       <div class="wrap">
-        <a class="brand" href="/">CRISPR Screen Explorer (working title)</a>
+        <a class="brand" href="/"><img class="icon" src="/icons/cas9.svg" alt="" width="44" height="44" />CRISPR Screen Explorer</a>
         <nav aria-label="Main">
           <ul>
             {nav.map((item) => (
