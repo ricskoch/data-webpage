@@ -21,4 +21,6 @@
 
 **Note (learned during the first deploy):** Cloudflare now creates new projects as Workers projects, which run `npx wrangler deploy` after the build. `wrangler.jsonc` tells it to publish the `dist` folder as static files. Without it, wrangler tried to reconfigure the Astro project and failed.
 
+**Known issue, accepted (decision 2026-10-11):** the Cloudflare check "Workers Builds: data-webpage" is red on every pull request branch. Cloudflare builds PR branches with a separate preview command (`npx wrangler preview`, an open beta feature) that failed with our configuration; production builds from `main` work. Adding a `previews` block did not fix it, and Richard chose not to spend more time on it. **Ignore this one red check.** The real merge signal is the three GitHub checks: `site`, `secret-scan` and `repo-hygiene`. If a different check goes red, that is a real problem. Fallback if ever wanted: set the dashboard Preview command to `npx wrangler versions upload`.
+
 **How it can go wrong:** the build fails on Cloudflare because of the Node version (the repo now pins Node 22 in `.node-version`; Cloudflare reads it automatically); a dependency update breaks a page (tests catch most of it); you forget the preview exists and the live site differs (check the deployment list).
