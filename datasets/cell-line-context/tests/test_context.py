@@ -166,5 +166,18 @@ class DepMapListingTests(unittest.TestCase):
         self.assertEqual(missing, ["copy_number"])
 
 
+class FigshareListingTests(unittest.TestCase):
+    def test_articles_become_listing_rows(self):
+        articles = [{"id": 1, "title": "DepMap 25Q2 Public", "published_date": "2025-05-20T10:00:00Z",
+                     "license": {"name": "CC BY 4.0"}},
+                    {"id": 2, "title": "Something else", "published_date": "2026-01-01T00:00:00Z"}]
+        files = {1: [{"name": "Model.csv", "download_url": "https://ndownloader.figshare.com/files/9", "size": 512,
+                      "computed_md5": "abc"}]}
+        rows = context.figshare_listing(articles, files, title_pattern=r"^DepMap .*Public")
+        self.assertEqual(rows, [{"release": "DepMap 25Q2 Public", "release_date": "2025-05-20", "filename": "Model.csv",
+                                 "url": "https://ndownloader.figshare.com/files/9", "size": "512", "md5": "abc",
+                                 "licence": "CC BY 4.0"}])
+
+
 if __name__ == "__main__":
     unittest.main()

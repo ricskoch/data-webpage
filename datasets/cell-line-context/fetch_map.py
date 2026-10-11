@@ -25,11 +25,13 @@ CONFIG = yaml.safe_load((HERE / "dataset.yaml").read_text())
 UA = {"User-Agent": "data-webpage-pipeline (https://github.com/ricskoch/data-webpage)"}
 
 
-def get(url, dest=None, tries=4):
-    """Download with retries; returns bytes, or writes to dest and returns its path."""
+def get(url, dest=None, tries=4, data=None):
+    """Download with retries; returns bytes, or writes to dest and returns its path. `data` is POSTed as JSON."""
+    body = json.dumps(data).encode() if data is not None else None
+    headers = {**UA, "Content-Type": "application/json"} if body else UA
     for attempt in range(tries):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=300) as r:
+            with urllib.request.urlopen(urllib.request.Request(url, data=body, headers=headers), timeout=300) as r:
                 if dest is None:
                     data = r.read()
                     return gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data
@@ -63,6 +65,18 @@ def licence_evidence(url, patterns):
         for m in re.finditer(p, text, re.I):
             hits.append(text[max(0, m.start() - 160): m.end() + 160].strip())
     return hits[:4] or ["no licence statement found on the page"]
+
+
+def figshare_depmap(dm):
+    """DepMap mirrors each public release on figshare; use its API when the portal asks for a browser check."""
+    found = json.loads(get(dm["figshare_search"], data={"search_for": dm["figshare_query"], "page_size": 100}))
+    found = [a for a in found if re.search(dm["figshare_title_pattern"], a.get("title", ""))]
+    if not found:
+        return []
+    latest = max(found, key=lambda a: a.get("published_date") or "")
+    detail = json.loads(get(f"{dm['figshare_api']}/articles/{latest['id']}"))
+    files = json.loads(get(f"{dm['figshare_api']}/articles/{latest['id']}/files?page_size=1000"))
+    return context.figshare_listing([detail], {detail["id"]: files}, dm["figshare_title_pattern"])
 
 
 def write_csv(path, rows, fields=None):
@@ -126,14 +140,23 @@ def main(work):
     report += ["", "## DepMap"]
     try:
         text = get(dm["listing_url"]).decode("utf-8", "replace")
-        report.append(f"- Listing starts with: `{text[:300]!r}`")
-        listing = [{k.strip().lower(): (v or "").strip() for k, v in r.items() if isinstance(k, str)}
-                   for r in csv.DictReader(io.StringIO(text))]
-        report.append(f"- Listing columns: {list(listing[0]) if listing else 'empty'}; {len(listing):,} files")
-        release, files, missing = context.pick_depmap_files(listing, dm["files"], dm["release_pattern"])
+        if text.lstrip().startswith("<"):
+            report.append("- The DepMap portal answered with a browser check page; using the figshare mirror.")
+            listing, pattern = figshare_depmap(dm), dm["figshare_title_pattern"]
+        else:
+            listing = [{k.strip().lower(): (v or "").strip() for k, v in r.items() if isinstance(k, str)}
+                       for r in csv.DictReader(io.StringIO(text))]
+            pattern = dm["release_pattern"]
+        report.append(f"- Listing: {len(listing):,} files; columns {list(listing[0]) if listing else 'none'}")
+        release, files, missing = context.pick_depmap_files(listing, dm["files"], pattern)
         write_csv(out / "depmap_files.csv", [r for r in listing if r.get("release") == release])
         report.append(f"- Latest public release: {release}; missing file types: {missing or 'none'}")
-        report += [f"- {k}: `{v.get('filename')}` {v.get('size', '')}" for k, v in files.items()]
+        report += [f"- {k}: `{v.get('filename')}` {v.get('size', '')} bytes" for k, v in files.items()]
+        lic = {r.get("licence") for r in listing if r.get("release") == release and r.get("licence")}
+        if lic:
+            report.append(f"- Licence stated on the figshare record: {', '.join(sorted(lic))}")
+        report.append("- All files in this release: " + ", ".join(
+            f"{r.get('filename')} ({r.get('size', '?')})" for r in listing if r.get("release") == release))
         if "models" in files:
             models = list(csv.DictReader(io.StringIO(get(files["models"]["url"]).decode("utf-8", "replace"))))
             cols = list(models[0]) if models else []

@@ -138,3 +138,16 @@ def pick_depmap_files(listing, wanted, release_pattern=r"^DepMap Public"):
         else:
             missing.append(key)
     return latest, files, sorted(missing)
+
+
+def figshare_listing(articles, files_by_article, title_pattern):
+    """Turn figshare articles (DepMap mirrors each public release there) into download-listing rows."""
+    rows = []
+    for a in articles:
+        if not re.search(title_pattern, a.get("title", "")):
+            continue
+        for f in files_by_article.get(a["id"], []):
+            rows.append({"release": a["title"], "release_date": (a.get("published_date") or "")[:10],
+                         "filename": f["name"], "url": f["download_url"], "size": str(f.get("size", "")),
+                         "md5": f.get("computed_md5", ""), "licence": (a.get("license") or {}).get("name", "")})
+    return rows
