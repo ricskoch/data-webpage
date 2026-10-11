@@ -38,6 +38,8 @@ jobs:
       - run: pip install -r datasets/biogrid-orcs/requirements.txt
       - name: Adapter unit tests
         run: python -m unittest discover -s datasets/biogrid-orcs/tests -v
+      - name: Cell line context unit tests
+        run: python -m unittest discover -s datasets/cell-line-context/tests -v
   site:
     runs-on: ubuntu-latest
     steps:

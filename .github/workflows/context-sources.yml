@@ -1,0 +1,40 @@
+# M3b step 1: download Cellosaurus and the DepMap listing, match ORCS cell lines, report coverage.
+# Runs on PRs that change the context pipeline, and by hand. Publishes nothing; the report is a run artifact
+# and is also printed to the log.
+name: "Cell line context: sources and matching"
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - datasets/cell-line-context/**
+      - .github/workflows/context-sources.yml
+permissions:
+  contents: read
+concurrency:
+  group: context-sources-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: datasets/biogrid-orcs/requirements.txt
+      - run: pip install -r datasets/biogrid-orcs/requirements.txt
+      - name: Unit tests
+        run: python -m unittest discover -s datasets/cell-line-context/tests -v
+      - name: Fetch sources and match cell lines
+        run: python -I datasets/cell-line-context/fetch_map.py "$RUNNER_TEMP/ctx"
+      - name: Report to job summary
+        if: always()
+        run: cat "$RUNNER_TEMP/ctx/out/report.md" >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: cell-line-context-report
+          path: ${{ runner.temp }}/ctx/out/
+          retention-days: 30
