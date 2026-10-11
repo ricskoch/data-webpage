@@ -16,3 +16,8 @@ Plain-language terms. The agent adds a term here whenever it introduces one.
 - **Checksum (SHA-256):** a fingerprint of a file. If one bit changes, the fingerprint changes.
 - **Screen (CRISPR):** one experiment that perturbs many genes and measures an effect.
 - **Rank-based comparison:** comparing screens by gene order rather than raw score, because score scales differ.
+- **Data profile:** a measured description of a dataset: files, columns, row counts, missing values, and oddities. Done before building anything on it.
+- **Null rate:** the share of cells in a column that are empty.
+- **Score direction:** whether a low or a high score means a gene "dropped out" in a screen. Differs between scoring methods and sometimes between screens.
+- **Known-biology check:** a positive control for data. Genes that every cell needs must look essential in the data; if not, the screen or our processing is suspect.
+- **Row group:** a block of rows inside a Parquet file. The browser downloads whole row groups, so their size sets how much a lookup transfers.
