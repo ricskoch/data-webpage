@@ -11,7 +11,7 @@ import Base from '../layouts/Base.astro';
     <label>Filter by cell line, study or phenotype<br /><input id="filter" type="search" /></label>
   </div>
   <p id="count" class="caption"></p>
-  <div class="table-box"><table>
+  <div class="table-box" tabindex="0" role="region" aria-label="Screens table"><table>
     <caption>Table 1. Screens in the collection (first 100 matches).</caption>
     <thead><tr><th>Study</th><th>Cell line</th><th>Type</th><th>Selection</th><th>Phenotype</th><th class="num">Genes</th><th>Comparable as</th></tr></thead>
     <tbody id="rows"></tbody>

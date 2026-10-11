@@ -62,7 +62,7 @@ import Base from '../layouts/Base.astro';
         </ul>
         <figure>${strip(ranked.map((r) => r[1]!))}
           <figcaption>Fig. 1. Rank of <span class="gene">${escapeHtml(key)}</span> within each comparable screen. A gene that is essential everywhere sits at the left.</figcaption></figure>
-        <div class="table-box"><table>
+        <div class="table-box" tabindex="0" role="region" aria-label="Results table"><table>
           <caption>Table 1. Every screen result for this gene, most depleted first. Rank: 0 to 1. Scale: 0 = like a non-essential gene, −1 = like a core-essential gene.</caption>
           <thead><tr><th>Study</th><th>Cell line</th><th>Phenotype</th><th>Selection</th><th class="num">Rank</th><th class="num">Scale</th><th class="num">Robust z</th><th>Hit</th><th class="num">Native score</th></tr></thead>
           <tbody>${[...ranked, ...rows.filter((r) => r[1] === null)].map(tr).join('')}</tbody>
