@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- M3b step 3: cell line context on the pages (`src/scripts/context.ts`). `/data` gains a Tissue filter, a "Key mutations in line" column (driver panel) and mutation search; `/gene` shows, per screen, the tissue and the looked-up gene's own mutation, expression and copy number in that line, with filters. Plain-language bands for expression and copy number are display aids, not statistical calls. CC BY 4.0 credit for DepMap and Cellosaurus. Pages work unchanged if the context is not published.
 - M3b step 2: cell line tables from DepMap 24Q4 (signatures, protein-altering mutations, expression, copy number) for the screened lines; per-gene JSON shards; manual workflow "Publish cell line context to R2 staging".
 - M3b step 1: cell line context pipeline (`datasets/cell-line-context/`): matches every ORCS screen's cell line to Cellosaurus (and through it to DepMap), never guessing ambiguous names; GitHub job downloads the sources, records licence evidence and reports coverage. Publishes nothing.
 - M3 quick win (F4, F20, F21): the screens table on `/data` and the results table on `/gene` get filters (cell line, study, library, phenotype, selection, comparability, hit), a text search, column sorting and 25/50/100-row pages (`src/scripts/table.ts`). New plain-language key to the scores (`ScoreExplainer`) on both pages.
