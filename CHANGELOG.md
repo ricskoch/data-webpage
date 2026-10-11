@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Prototype: Data overview (`/data`) and Gene lookup (`/gene`) pages reading JSON from the R2 staging bucket; `export_site.py`; manual "Publish data to R2 staging" workflow; runbook `docs/ops/r2-staging.md`.
 - M2b part 2: comparable score columns (levels A, B, C), score family table in `dataset.yaml`, direction rules, known-biology summary.
 - Reverted the TypeScript 7 bump (#5): `@astrojs/check` requires TypeScript 5.
 - Visual identity: Victorian botanical plate look (parchment, ink, watercolour molecular icons), design tokens in `src/styles/tokens.css`, style guide `docs/design/style-guide.md`.

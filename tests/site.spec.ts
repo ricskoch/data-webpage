@@ -5,6 +5,8 @@ const pages = [
   { path: '/', heading: /Explore human CRISPR screens/ },
   { path: '/about', heading: /About/ },
   { path: '/data-policy', heading: /Data policy/ },
+  { path: '/data', heading: /Data overview/ },
+  { path: '/gene', heading: /Gene lookup/ },
 ];
 
 for (const p of pages) {

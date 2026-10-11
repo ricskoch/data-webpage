@@ -113,3 +113,21 @@ footer.site { border-top: 1px solid var(--border); color: var(--muted); font-siz
 footer.site .wrap { max-width: var(--max-wide); }
 footer.site ul { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; gap: 1.25rem; flex-wrap: wrap; }
 footer.site a { display: inline-block; padding: .4rem 0; }
+
+/* Data pages (prototype) */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1rem; padding: 0; list-style: none; }
+.stats li { background: var(--surface); border: 1px solid var(--border); padding: 0.75rem 1rem; }
+.stats b { display: block; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.stats span { color: var(--muted); font-variant-caps: all-small-caps; letter-spacing: 0.1em; }
+.bars { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+.bars li { display: grid; grid-template-columns: minmax(7rem, 40%) 1fr auto; gap: 0.5rem; align-items: center; margin: 0.2rem 0; }
+.bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar { display: block; height: 0.9rem; background: var(--chart-1); min-width: 2px; }
+.bar-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lookup { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; margin: 1rem 0; }
+.lookup input { font: inherit; padding: 0.5rem; min-height: 44px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.lookup button { font: inherit; min-height: 44px; padding: 0 1rem; background: var(--accent); color: var(--bg); border: 0; cursor: pointer; }
+.strip { width: 100%; height: auto; display: block; margin: 0.5rem 0 0.25rem; }
+.strip .dot { fill: var(--chart-1); fill-opacity: 0.45; }
+.strip .axis { stroke: var(--text); stroke-width: 1; }
+.strip text { fill: var(--muted); font-size: 12px; }

@@ -1,0 +1,66 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Data overview · CRISPR Screen Explorer" description="What is in the BioGRID ORCS human CRISPR screen collection: screens, studies, methods and how comparable they are.">
+  <h1>Data overview</h1>
+  <p class="notice"><strong>Prototype.</strong> BioGRID ORCS 2.0.18, human screens, converted by this project's
+    pipeline. Not yet reviewed by a bioinformatician; do not use for research.</p>
+  <div id="overview" aria-live="polite"><p>Loading the data…</p></div>
+  <h2>Screens</h2>
+  <div class="lookup">
+    <label>Filter by cell line, study or phenotype<br /><input id="filter" type="search" /></label>
+  </div>
+  <p id="count" class="caption"></p>
+  <div class="table-box"><table>
+    <caption>Table 1. Screens in the collection (first 100 matches).</caption>
+    <thead><tr><th>Study</th><th>Cell line</th><th>Type</th><th>Selection</th><th>Phenotype</th><th class="num">Genes</th><th>Comparable as</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+</Base>
+
+<script>
+  import { getJSON, bars, label, escapeHtml, type Screen } from '../scripts/data';
+
+  const box = document.getElementById('overview')!;
+  async function main() {
+  try {
+    const [summary, screens] = await Promise.all([getJSON<any>('summary.json'), getJSON<Screen[]>('screens.json')]);
+    const n = summary.screens;
+    box.innerHTML = `
+      <ul class="stats">
+        <li><b>${n.toLocaleString('en')}</b><span>screens</span></li>
+        <li><b>${summary.studies.toLocaleString('en')}</b><span>studies</span></li>
+        <li><b>${(summary.rows / 1e6).toFixed(1)} M</b><span>gene results</span></li>
+        <li><b>${(summary.by_status.anchored ?? 0).toLocaleString('en')}</b><span>on the essential-gene scale</span></li>
+      </ul>
+      <h2>How comparable are the screens?</h2>
+      <p>Each screen's scores are aligned so that low means depleted, then turned into a within-screen rank.
+        Screens that qualify also get a scale where 0 is a typical non-essential gene and −1 a typical core-essential gene.</p>
+      <ul class="bars">${bars(summary.by_status, n)}</ul>
+      <h2>Perturbation and selection</h2>
+      <ul class="bars">${bars(summary.by_perturbation, n)}</ul>
+      <ul class="bars">${bars(summary.by_selection, n)}</ul>
+      <h2>Most screened cell lines</h2>
+      <ul class="bars">${bars(summary.top_cell_lines, n)}</ul>`;
+
+    const tbody = document.getElementById('rows')!;
+    const count = document.getElementById('count')!;
+    const render = (q: string) => {
+      const needle = q.trim().toLowerCase();
+      const hits = screens.filter((s) => !needle ||
+        [s.cell_line_label, s.author_label, s.phenotype, s.study_id].some((v) => (v ?? '').toLowerCase().includes(needle)));
+      count.textContent = `${hits.length.toLocaleString('en')} of ${screens.length.toLocaleString('en')} screens match.`;
+      tbody.innerHTML = hits.slice(0, 100).map((s) => `<tr>
+        <td>${escapeHtml(s.author_label ?? s.study_id)}</td><td>${escapeHtml(s.cell_line_label)}</td>
+        <td>${escapeHtml(label(s.perturbation_type))}</td><td>${escapeHtml(label(s.selection_type))}</td>
+        <td>${escapeHtml(s.phenotype)}</td><td class="num">${(s.rows ?? 0).toLocaleString('en')}</td>
+        <td>${escapeHtml(label(s.normalization_status))}</td></tr>`).join('');
+    };
+    render('');
+    document.getElementById('filter')!.addEventListener('input', (e) => render((e.target as HTMLInputElement).value));
+  } catch (err) {
+    box.innerHTML = `<p class="notice"><strong>Data not available.</strong> ${escapeHtml(String(err))}</p>`;
+  }
+  }
+  main();
+</script>

@@ -1,0 +1,78 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Gene lookup · CRISPR Screen Explorer" description="Look up one gene across all human CRISPR screens in BioGRID ORCS, with each screen's context.">
+  <h1>Gene lookup</h1>
+  <p class="notice"><strong>Prototype.</strong> Scores are aligned so that low means depleted. Not yet reviewed
+    by a bioinformatician; do not use for research.</p>
+  <form id="form" class="lookup">
+    <label>Gene symbol<br /><input id="q" name="g" autocomplete="off" placeholder="e.g. TP53" required /></label>
+    <button type="submit">Look up</button>
+  </form>
+  <div id="out" aria-live="polite"></div>
+</Base>
+
+<script>
+  import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow } from '../scripts/data';
+
+  const out = document.getElementById('out')!;
+  const input = document.getElementById('q') as HTMLInputElement;
+  let genes: Record<string, [string, number]> | null = null;
+  let screens: Screen[] | null = null;
+
+  /** Dots for each comparable screen on a 0 (depleted) to 1 (enriched) rank axis. */
+  function strip(ranks: number[]): string {
+    const W = 600, H = 70, x = (r: number) => 20 + r * (W - 40);
+    const dots = ranks.map((r, i) => `<circle class="dot" cx="${x(r).toFixed(1)}" cy="${18 + (i % 7) * 4}" r="3"/>`).join('');
+    return `<svg class="strip" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rank of this gene in ${ranks.length} screens">
+      ${dots}<line class="axis" x1="20" x2="${W - 20}" y1="50" y2="50"/>
+      <text x="20" y="66">0 · most depleted</text><text x="${W / 2}" y="66" text-anchor="middle">0.5</text>
+      <text x="${W - 20}" y="66" text-anchor="end">1 · most enriched</text></svg>`;
+  }
+
+  const median = (v: number[]) => { const s = [...v].sort((a, b) => a - b); const m = s.length >> 1;
+    return s.length ? (s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) : null; };
+
+  async function lookup(symbol: string) {
+    out.innerHTML = '<p>Loading…</p>';
+    try {
+      genes ??= await getJSON<Record<string, [string, number]>>('genes.json');
+      screens ??= await getJSON<Screen[]>('screens.json');
+      const key = Object.keys(genes!).find((k) => k.toUpperCase() === symbol.toUpperCase());
+      if (!key) { out.innerHTML = `<p>No gene <span class="gene">${escapeHtml(symbol)}</span> in this collection. Symbols follow the source files; try an older name if it was renamed.</p>`; return; }
+      const [pid, shard] = genes![key];
+      const rows: GeneRow[] = (await getJSON<Record<string, GeneRow[]>>(`g/${String(shard).padStart(4, '0')}.json`))[pid] ?? [];
+      const ranked = rows.filter((r) => r[1] !== null).sort((a, b) => a[1]! - b[1]!);
+      const scaled = rows.map((r) => r[2]).filter((v): v is number => v !== null);
+      const hits = rows.filter((r) => r[4] === 1).length;
+      const tr = (r: GeneRow) => { const s = screens![r[0]]; return `<tr>
+        <td>${escapeHtml(s.author_label ?? s.study_id)}</td><td>${escapeHtml(s.cell_line_label)}</td>
+        <td>${escapeHtml(s.phenotype)}</td><td>${escapeHtml(label(s.selection_type))}</td>
+        <td class="num">${fmt(r[1])}</td><td class="num">${fmt(r[2])}</td><td class="num">${fmt(r[3])}</td>
+        <td>${r[4] ? 'yes' : 'no'}</td><td class="num">${fmt(r[5], 3)} <small>${escapeHtml(s.scoring_method)}</small></td></tr>`; };
+      history.replaceState(null, '', `?g=${encodeURIComponent(key)}`);
+      out.innerHTML = `
+        <h2><span class="gene">${escapeHtml(key)}</span></h2>
+        <ul class="stats">
+          <li><b>${rows.length}</b><span>screen results</span></li>
+          <li><b>${ranked.length}</b><span>comparable by rank</span></li>
+          <li><b>${fmt(median(ranked.map((r) => r[1]!)))}</b><span>median rank</span></li>
+          <li><b>${fmt(median(scaled))}</b><span>median essential scale (${scaled.length})</span></li>
+          <li><b>${hits}</b><span>hits called by the source</span></li>
+        </ul>
+        <figure>${strip(ranked.map((r) => r[1]!))}
+          <figcaption>Fig. 1. Rank of <span class="gene">${escapeHtml(key)}</span> within each comparable screen. A gene that is essential everywhere sits at the left.</figcaption></figure>
+        <div class="table-box"><table>
+          <caption>Table 1. Every screen result for this gene, most depleted first. Rank: 0 to 1. Scale: 0 = like a non-essential gene, −1 = like a core-essential gene.</caption>
+          <thead><tr><th>Study</th><th>Cell line</th><th>Phenotype</th><th>Selection</th><th class="num">Rank</th><th class="num">Scale</th><th class="num">Robust z</th><th>Hit</th><th class="num">Native score</th></tr></thead>
+          <tbody>${[...ranked, ...rows.filter((r) => r[1] === null)].map(tr).join('')}</tbody>
+        </table></div>`;
+    } catch (err) {
+      out.innerHTML = `<p class="notice"><strong>Data not available.</strong> ${escapeHtml(String(err))}</p>`;
+    }
+  }
+
+  document.getElementById('form')!.addEventListener('submit', (e) => { e.preventDefault(); lookup(input.value.trim()); });
+  const start = new URLSearchParams(location.search).get('g');
+  if (start) { input.value = start; lookup(start); }
+</script>
