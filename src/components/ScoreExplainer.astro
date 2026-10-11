@@ -1,0 +1,42 @@
+---
+// Plain-language key to the score columns (spec 12.8, docs/score-normalization.md).
+interface Props { open?: boolean }
+const { open = false } = Astro.props;
+---
+<details class="explainer" open={open}>
+  <summary>How to read the scores</summary>
+  <p>A CRISPR screen knocks out one gene per cell, lets the cells grow (or treats them), and then counts which
+    knockouts became rarer or more common. Every study reports this in its own unit, so we add three shared
+    yardsticks next to the original number. Throughout the site, <strong>low means depleted</strong>: cells
+    without the gene grew worse. We flip a study's sign where needed so this always holds.</p>
+  <dl>
+    <dt>Rank (level A), 0 to 1</dt>
+    <dd>The gene's position among all genes in that one screen: 0 = the most depleted gene, 0.5 = the middle,
+      1 = the most enriched. Like a finishing position in a race given as a percentile. It works for almost every
+      screen, but it says nothing about <em>how much</em> the cells were affected.</dd>
+    <dt>Scale (level B), anchored on known genes</dt>
+    <dd>A two-point calibration, like a standard curve with a blank and a positive control.
+      <b>0</b> = the median of a reference set of hundreds of genes known to be non-essential (the blank).
+      <b>−1</b> = the median of a reference set of core-essential genes, such as ribosome and DNA-replication
+      genes (the positive control). So −0.5 means "half as depleted as a typical essential gene", below −1 means
+      "more depleted than a typical essential gene", and above 0 means the cells grew <em>better</em> without it.
+      Only screens that select for growth and contain enough reference genes get this scale.</dd>
+    <dt>Robust z (level C)</dt>
+    <dd>How many typical spreads the gene sits from the middle of its own screen, like flagging an outlier well
+      against the plate median. −3 is unusually depleted <em>for that screen</em>. Useful for drug and sorting
+      screens, but not comparable in size between screens.</dd>
+    <dt>Native score</dt>
+    <dd>The study's own number in its own unit (log2 fold change, MAGeCK, BAGEL Bayes factor, CERES and others),
+      like readings from different instruments. Never compare native scores between studies.</dd>
+    <dt>Hit</dt>
+    <dd>Whether the study's authors called the gene significant, by their own threshold.</dd>
+    <dt>Comparable as</dt>
+    <dd><b>anchored</b>: has rank, scale and z. <b>robust z</b>: rank and z only. <b>rank only</b>: rank only.
+      <b>not comparable</b>: we could not tell which direction is "depleted" (or the study only listed its hits),
+      so only the native score is shown.</dd>
+  </dl>
+  <p>What the numbers do <em>not</em> tell you yet: <em>why</em> a gene matters in one cell line and not another.
+    That depends on the line's own mutations, expression and copy number, which we plan to add next.
+    Method details: <a href="https://github.com/ricskoch/data-webpage/blob/main/docs/score-normalization.md">score
+    normalization notes</a>.</p>
+</details>
