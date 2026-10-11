@@ -1,0 +1,42 @@
+# M2b: run the BioGRID ORCS pipeline end to end (fetch, validate, convert, manifest) on a GitHub runner.
+# Runs on PRs that change the adapter, and by hand. It publishes nothing: only the validation report and the
+# manifest are kept as a run artifact. The Parquet files stay on the runner and are discarded with it.
+name: Ingest BioGRID ORCS
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - datasets/biogrid-orcs/**
+      - .github/workflows/ingest-biogrid-orcs.yml
+permissions:
+  contents: read
+concurrency:
+  group: ingest-biogrid-orcs-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: datasets/biogrid-orcs/requirements.txt
+      - run: pip install -r datasets/biogrid-orcs/requirements.txt
+      - name: Fetch pinned release and verify checksum
+        run: python -I datasets/biogrid-orcs/ingest.py fetch "$RUNNER_TEMP/orcs"
+      - name: Validate and convert
+        run: python -I datasets/biogrid-orcs/ingest.py convert "$RUNNER_TEMP/orcs"
+      - name: Sizes
+        if: always()
+        run: ls -l "$RUNNER_TEMP/orcs/out" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: biogrid-orcs-validation
+          path: |
+            ${{ runner.temp }}/orcs/out/validation_report.json
+            ${{ runner.temp }}/orcs/out/manifest.json
+          retention-days: 30
