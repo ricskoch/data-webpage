@@ -17,11 +17,13 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 <script>
   import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
+  import { loadLines, loadGene, credit, geneInLine, copyLabel, expressionLabel, type Lines, type LineGene } from '../scripts/context';
 
   const out = document.getElementById('out')!;
   const input = document.getElementById('q') as HTMLInputElement;
   let genes: Record<string, [string, number]> | null = null;
   let screens: Screen[] | null = null;
+  let lines: Lines | null | undefined;
 
   /** Dots for each comparable screen on a 0 (depleted) to 1 (enriched) rank axis. */
   function strip(ranks: number[]): string {
@@ -44,6 +46,9 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       const key = Object.keys(genes!).find((k) => k.toUpperCase() === symbol.toUpperCase());
       if (!key) { out.innerHTML = `<p>No gene <span class="gene">${escapeHtml(symbol)}</span> in this collection. Symbols follow the source files; try an older name if it was renamed.</p>`; return; }
       const [pid, shard] = genes![key];
+      lines ??= await loadLines();
+      const gctx = lines ? await loadGene(pid, shard) : undefined;
+      const mutatedIn = gctx ? new Set(gctx.m.map((m) => m[0])).size : 0;
       const rows: GeneRow[] = (await getJSON<Record<string, GeneRow[]>>(`g/${String(shard).padStart(4, '0')}.json`))[pid] ?? [];
       const ranked = rows.filter((r) => r[1] !== null).sort((a, b) => a[1]! - b[1]!);
       const scaled = rows.map((r) => r[2]).filter((v): v is number => v !== null);
@@ -57,13 +62,21 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           <li><b>${fmt(median(ranked.map((r) => r[1]!)))}</b><span>median rank</span></li>
           <li><b>${fmt(median(scaled))}</b><span>median essential scale (${scaled.length})</span></li>
           <li><b>${hits}</b><span>hits called by the source</span></li>
+          ${lines && gctx ? `<li><b>${mutatedIn}</b><span>of ${lines.lines.length} profiled lines carry a protein-altering mutation</span></li>` : ''}
         </ul>
         <figure>${strip(ranked.map((r) => r[1]!))}
           <figcaption>Fig. 1. Rank of <span class="gene">${escapeHtml(key)}</span> within each comparable screen. A gene that is essential everywhere sits at the left.</figcaption></figure>
         <h3>Every screen result for this gene</h3>
-        <div id="results"></div>`;
-      type Row = { s: Screen; rank: number | null; scale: number | null; z: number | null; hit: number; native: number | null };
-      const data: Row[] = rows.map((r) => ({ s: screens![r[0]], rank: r[1], scale: r[2], z: r[3], hit: r[4], native: r[5] }));
+        <div id="results"></div>${lines && gctx ? `<p>${credit(lines)}</p>` : ''}`;
+      type Row = { s: Screen; rank: number | null; scale: number | null; z: number | null; hit: number; native: number | null;
+        tissue: string | null; ctx: LineGene | null };
+      const data: Row[] = rows.map((r) => {
+        const s = screens![r[0]], li = lines?.screen_line[String(s.screen_id)];
+        const line = li === undefined ? null : lines!.lines[li];
+        return { s, rank: r[1], scale: r[2], z: r[3], hit: r[4], native: r[5], tissue: line?.lineage ?? null,
+          ctx: li === undefined ? null : geneInLine(gctx, li) };
+      });
+      const ctxCols = lines && gctx;
       const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
       mountTable<Row>(document.getElementById('results')!, {
         rows: data, noun: 'screen results', label: 'Results table', sort: { column: 5, dir: 'asc' },
@@ -76,6 +89,12 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           { key: 'selection', label: 'Selection', get: (r) => r.s.selection_type, show: label },
           { key: 'status', label: 'Comparable as', get: (r) => r.s.normalization_status, show: label },
           { key: 'hit', label: 'Hit', get: (r) => (r.hit ? 'yes' : 'no') },
+          ...(ctxCols ? [
+            { key: 'tissue', label: 'Tissue', get: (r: Row) => r.tissue },
+            { key: 'mut', label: `${key} mutated in line`, get: (r: Row) => (r.ctx ? (r.ctx.mutation ? 'yes' : 'no') : null) },
+            { key: 'expr', label: `${key} expression`, get: (r: Row) => expressionLabel(r.ctx?.expression ?? null) },
+            { key: 'cn', label: `${key} copy number`, get: (r: Row) => copyLabel(r.ctx?.copyNumber ?? null) },
+          ] : []),
         ],
         columns: [
           { label: 'Study', cell: (r) => text(r.s.author_label ?? r.s.study_id), sort: (r) => r.s.author_label ?? r.s.study_id },
@@ -88,6 +107,12 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           { label: 'Robust z', cell: (r) => fmt(r.z), sort: (r) => r.z, num: true },
           { label: 'Hit', cell: (r) => (r.hit ? 'yes' : 'no'), sort: (r) => r.hit },
           { label: 'Native score', cell: (r) => `${fmt(r.native, 3)} <small>${text(r.s.scoring_method)}</small>`, sort: (r) => r.native, num: true },
+          ...(ctxCols ? [
+            { label: 'Tissue', cell: (r: Row) => text(r.tissue), sort: (r: Row) => r.tissue },
+            { label: 'Mutation in line', cell: (r: Row) => text(r.ctx?.mutation ?? (r.ctx ? 'none' : null)), sort: (r: Row) => r.ctx?.mutation },
+            { label: 'Expression', cell: (r: Row) => r.ctx?.expression == null ? '–' : `${fmt(r.ctx.expression, 1)} <small>${expressionLabel(r.ctx.expression)}</small>`, sort: (r: Row) => r.ctx?.expression, num: true },
+            { label: 'Copy number', cell: (r: Row) => r.ctx?.copyNumber == null ? '–' : `${fmt(r.ctx.copyNumber, 2)} <small>${copyLabel(r.ctx.copyNumber)}</small>`, sort: (r: Row) => r.ctx?.copyNumber, num: true },
+          ] : []),
         ],
       });
     } catch (err) {

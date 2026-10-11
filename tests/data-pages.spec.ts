@@ -64,3 +64,52 @@ test('/gene: results start most depleted first and can be filtered to hits', asy
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });
+
+// Cell line context (M3b) on top of the same fake data; registered after fakeData so it takes precedence for /ctx/.
+const ctxLines = {
+  release: 'DepMap 24Q4 Public', screen_line: Object.fromEntries(screens.map((s, i) => [s.screen_id, i < 40 ? 0 : 1])),
+  lines: [
+    { cellosaurus_id: 'CVCL_0030', name: 'HeLa', depmap_id: 'ACH-001086', screens: 40, problematic: false, lineage: 'Cervix', drivers: [] },
+    { cellosaurus_id: 'CVCL_0004', name: 'K-562', depmap_id: 'ACH-000551', screens: 20, problematic: false, lineage: 'Myeloid', drivers: ['TP53 p.Q136fs'] },
+  ],
+};
+async function fakeContext(page: Page) {
+  await page.route('**/ctx/**', (route) => {
+    const u = route.request().url();
+    const body = u.endsWith('lines.json') ? ctxLines
+      : u.endsWith('/g/0000.json') ? { g1: { e: [6.5, 0.4], c: [1.0, 0.1], m: [[1, 'p.Q136fs', 1, 0]] } } : null;
+    return body ? route.fulfill({ json: body }) : route.fulfill({ status: 404 });
+  });
+}
+
+test('/data: tissue filter and key mutations from the cell line context', async ({ page }) => {
+  await fakeData(page);
+  await fakeContext(page);
+  await page.goto('/data');
+  const count = page.locator('#screens [data-count]');
+  await page.getByLabel('Tissue', { exact: true }).selectOption('Myeloid');
+  await expect(count).toHaveText('20 of 60 screens match.');
+  await expect(page.locator('#screens tbody tr').first().locator('td').nth(10)).toHaveText('TP53 p.Q136fs');
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await page.getByLabel('Search study, cell line, phenotype or mutated gene').fill('TP53');
+  await expect(count).toHaveText('20 of 60 screens match.');
+  await expect(page.getByText('both CC BY 4.0')).toBeVisible();
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+  expect(results.violations).toEqual([]);
+});
+
+test('/gene: the gene\'s own mutation, expression and copy number in each screened line', async ({ page }) => {
+  await fakeData(page);
+  await fakeContext(page);
+  await page.goto('/gene?g=tp53');
+  await expect(page.getByText('of 2 profiled lines carry a protein-altering mutation')).toBeVisible();
+  await page.getByLabel('TP53 mutated in line', { exact: true }).selectOption('yes');
+  await expect(page.locator('#results [data-count]')).toHaveText('20 of 60 screen results match.');
+  const row = page.locator('#results tbody tr').first();
+  await expect(row.locator('td').nth(9)).toHaveText('Myeloid');
+  await expect(row.locator('td').nth(10)).toHaveText('p.Q136fs (loss of function)');
+  await expect(row.locator('td').nth(11)).toHaveText('0.4 off');
+  await expect(row.locator('td').nth(12)).toHaveText('0.10 deep loss');
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+  expect(results.violations).toEqual([]);
+});
