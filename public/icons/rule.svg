@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 32" width="240" height="32" role="img" aria-label="Ornamental divider">
+<title>Ornamental divider</title>
+<defs>
+<filter id="wash" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="21" result="n"/>
+<feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G" result="d"/>
+<feGaussianBlur in="d" stdDeviation="0.6" result="db"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="11" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.1 1.35" result="ga"/>
+<feComposite in="db" in2="ga" operator="in" result="grain"/>
+<feMorphology in="d" operator="erode" radius="1.4" result="er"/>
+<feComposite in="d" in2="er" operator="out" result="edge"/>
+<feMerge><feMergeNode in="grain"/><feMergeNode in="edge"/></feMerge>
+</filter>
+<filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+<feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="4" result="n"/>
+<feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" xChannelSelector="R" yChannelSelector="G"/>
+</filter>
+</defs>
+<g filter="url(#wash)" opacity="0.9"><polygon points="129.5,21.5 120.0,27.0 110.5,21.5 110.5,10.5 120.0,5.0 129.5,10.5" fill="#5B86B4" fill-opacity=".5"/><path d="M30 16 L108 16 M132 16 L210 16" stroke="#D29A45" stroke-width="5" stroke-opacity=".45"/></g>
+<g filter="url(#ink)" fill="none" stroke="#3A2A1C" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 16 L109 16 M131 16 L210 16"/><circle cx="36" cy="16" r="2.5"/><circle cx="48" cy="16" r="2.5"/><circle cx="60" cy="16" r="2.5"/><circle cx="72" cy="16" r="2.5"/><circle cx="84" cy="16" r="2.5"/><circle cx="96" cy="16" r="2.5"/><circle cx="144" cy="16" r="2.5"/><circle cx="156" cy="16" r="2.5"/><circle cx="168" cy="16" r="2.5"/><circle cx="180" cy="16" r="2.5"/><circle cx="192" cy="16" r="2.5"/><circle cx="204" cy="16" r="2.5"/><polygon points="129.5,21.5 120.0,27.0 110.5,21.5 110.5,10.5 120.0,5.0 129.5,10.5"/><circle cx="120" cy="16" r="5"/></g>
+</svg>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="Two DNA duplexes aligned base by base">
+<title>Two DNA duplexes aligned base by base</title>
+<defs>
+<filter id="wash" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="9" result="n"/>
+<feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G" result="d"/>
+<feGaussianBlur in="d" stdDeviation="0.6" result="db"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="11" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.1 1.35" result="ga"/>
+<feComposite in="db" in2="ga" operator="in" result="grain"/>
+<feMorphology in="d" operator="erode" radius="1.4" result="er"/>
+<feComposite in="d" in2="er" operator="out" result="edge"/>
+<feMerge><feMergeNode in="grain"/><feMergeNode in="edge"/></feMerge>
+</filter>
+<filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+<feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="4" result="n"/>
+<feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" xChannelSelector="R" yChannelSelector="G"/>
+</filter>
+</defs>
+<g filter="url(#wash)" opacity="0.9"><path d="M10 24 L86 24 L86 34 L10 34 Z" fill="#5B86B4" fill-opacity=".45"/>
+<path d="M10 62 L86 62 L86 72 L10 72 Z" fill="#D29A45" fill-opacity=".5"/>
+<rect x="52" y="20" width="8" height="56" fill="#B5543A" fill-opacity=".45"/></g>
+<g filter="url(#ink)" fill="none" stroke="#3A2A1C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 24 L86 24 M10 34 L86 34 M16 24 L16 34 M26 24 L26 34 M36 24 L36 34 M46 24 L46 34 M56 24 L56 34 M66 24 L66 34 M76 24 L76 34 "/><path d="M10 62 L86 62 M10 72 L86 72 M16 62 L16 72 M26 62 L26 72 M36 62 L36 72 M46 62 L46 72 M56 62 L56 72 M66 62 L66 72 M76 62 L76 72 "/>
+<path d="M16 38 L16 58 M26 38 L26 58 M36 38 L36 58 M46 38 L46 58 M66 38 L66 58 M76 38 L76 58" stroke-dasharray="2 4" stroke-width="1.1"/>
+<path d="M53 42 L59 54 M59 42 L53 54" stroke-width="1.4"/></g>
+</svg>
