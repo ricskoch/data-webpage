@@ -1,0 +1,49 @@
+# Prototype: build the cell line context data and upload it to the R2 staging bucket (same bucket and secrets as
+# "Publish data to R2 staging"). Manual only. Staging is not a data release (spec 6.3).
+name: Publish cell line context to R2 staging
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-context-staging
+  cancel-in-progress: false
+env:
+  R2_BUCKET: data-webpage-staging
+  PREFIX: cell-line-context/0.1.0-staging
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: datasets/biogrid-orcs/requirements.txt
+      - run: pip install -r datasets/biogrid-orcs/requirements.txt
+      - name: Fetch, match, build
+        run: |
+          python -I datasets/cell-line-context/fetch_map.py "$RUNNER_TEMP/ctx"
+          python -I datasets/cell-line-context/build.py "$RUNNER_TEMP/ctx"
+      - name: Compress JSON
+        run: find "$RUNNER_TEMP/ctx/site" -name '*.json' -exec gzip -9 -n {} \; -exec sh -c 'mv "$1.gz" "$1"' _ {} \;
+      - name: Size check (stay far below the 10 GB free tier)
+        run: |
+          du -sh "$RUNNER_TEMP/ctx/site" "$RUNNER_TEMP/ctx/out/context"
+          total=$(du -sk "$RUNNER_TEMP/ctx/site" "$RUNNER_TEMP/ctx/out/context" | awk '{s+=$1} END {print s}')
+          test "$total" -lt 1000000 || { echo "upload over 1 GB, stopping"; exit 1; }
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          aws s3 sync "$RUNNER_TEMP/ctx/site" "s3://$R2_BUCKET/$PREFIX/site" --endpoint-url "$ENDPOINT" \
+            --content-type application/json --content-encoding gzip --cache-control "public, max-age=3600" --only-show-errors
+          for f in "$RUNNER_TEMP"/ctx/out/context/* "$RUNNER_TEMP"/ctx/out/report.md; do
+            aws s3 cp "$f" "s3://$R2_BUCKET/$PREFIX/$(basename "$f")" --endpoint-url "$ENDPOINT" --only-show-errors
+          done
+          echo "uploaded to $R2_BUCKET/$PREFIX"
