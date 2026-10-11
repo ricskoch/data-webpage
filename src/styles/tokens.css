@@ -29,7 +29,7 @@
   --score-mid: #e7dcc4;
   --score-high: #a3402c;
 
-  /* Type. Fallbacks are close system serifs until the web fonts are self-hosted. */
+  /* Type. Web fonts are self-hosted (fonts.css); system serifs are the fallback. */
   --font-display: 'Playfair Display', 'Bodoni 72', Didot, 'Iowan Old Style', Georgia, serif;
   --font-body: 'Source Serif 4', 'Source Serif Pro', 'Iowan Old Style', Charter, Georgia, serif;
   --font-mono: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;

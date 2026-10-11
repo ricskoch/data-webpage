@@ -26,9 +26,7 @@ New colours need a contrast check before use.
 ## Type
 - **Headings:** Playfair Display, weight 600. A Didone like Victorian title pages. Headings only.
 - **Body, tables, labels:** Source Serif 4. Made for screen reading; has small capitals and tabular figures.
-- Both are SIL Open Font License. They must be self-hosted (no Google Fonts requests: the site makes no
-  third-party requests). Until the `.woff2` files are added under `public/fonts/`, the token stacks fall
-  back to close system serifs.
+- Both are SIL Open Font License, self-hosted from `public/fonts/` (Latin subset, variable files, licences beside them) and declared in `src/styles/fonts.css`. Never load fonts from Google Fonts or another third party.
 - Labels and table headers: small capitals (`font-variant-caps: all-small-caps`, letter-spacing 0.1em).
 - Gene symbols: italic (`.gene`). Numbers in tables: tabular figures, right-aligned (`td.num`).
 - Captions: italic sepia, numbered "Fig. n." / "Table n.".
