@@ -17,4 +17,4 @@
 
 **Rollback practice (do once):** in Pages > Deployments, find the previous deployment and choose "Rollback to this deployment"; then deploy forward again. This is the emergency procedure; you want to have done it once when nothing is wrong.
 
-**How it can go wrong:** the build fails on Cloudflare because of the Node version (set `NODE_VERSION`); a dependency update breaks a page (tests catch most of it); you forget the preview exists and the live site differs (check the deployment list).
+**How it can go wrong:** the build fails on Cloudflare because of the Node version (the repo now pins Node 22 in `.node-version`; Cloudflare reads it automatically); a dependency update breaks a page (tests catch most of it); you forget the preview exists and the live site differs (check the deployment list).
