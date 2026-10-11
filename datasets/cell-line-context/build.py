@@ -92,6 +92,13 @@ def select_mutations(df, wanted):
     return out.reset_index(drop=True), info
 
 
+def models_with_calls(df, wanted):
+    """Wanted models that appear in the mutation file at all. A line missing here has no mutation calls, so it
+    must not be counted as wild-type for any gene."""
+    col = next(c for c in MUT_COLUMNS["depmap_id"] if c in df.columns)
+    return set(df[col].dropna()) & set(wanted)
+
+
 def line_table(mapping, models, signatures):
     """One row per screened cell line that DepMap profiles, joined by Cellosaurus ID (DepMap's RRID column)."""
     m = mapping.dropna(subset=["cellosaurus_id"])
@@ -158,8 +165,10 @@ def main(work):
 
     header = pd.read_csv(local["mutations"], nrows=0).columns
     usecols = [c for names in MUT_COLUMNS.values() for c in names if c in header]
-    muts, minfo = select_mutations(pd.read_csv(local["mutations"], usecols=usecols, low_memory=False), wanted)
-    report.append(f"- Mutations: {minfo}")
+    raw = pd.read_csv(local["mutations"], usecols=usecols, low_memory=False)
+    muts, minfo = select_mutations(raw, wanted)
+    lines["mutation_calls"] = lines["depmap_id"].isin(models_with_calls(raw, wanted))
+    report.append(f"- Mutations: {minfo}; lines without any mutation calls: {int((~lines['mutation_calls']).sum())}")
     expr, einfo = read_matrix(local["expression"], wanted)
     report.append(f"- Expression: {einfo['models_kept']} of {einfo['models_read']} models kept; "
                   f"{expr['entrez'].nunique():,} genes; median log2(TPM+1) {expr['value'].median():.2f}; "

@@ -8,6 +8,8 @@ export interface Line {
   age?: string | null; primary_or_metastasis?: string | null;
   ploidy?: number | null; wgd?: number | null; msi_score?: number | null; aneuploidy?: number | null;
   drivers: string[];
+  /** False when DepMap has no mutation calls for the line (absent in files built before this field existed). */
+  mutation_calls?: boolean;
 }
 export interface Lines { release: string; lines: Line[]; screen_line: Record<string, number> }
 /** Per gene, aligned to Lines.lines: e = log2(TPM+1), c = log2(relative copy number + 1), m = [line, change, LoF, hotspot]. */

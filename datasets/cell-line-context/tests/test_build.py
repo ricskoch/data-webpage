@@ -63,6 +63,12 @@ class MutationTests(unittest.TestCase):
             build.select_mutations(pd.DataFrame({"HugoSymbol": ["TP53"]}), wanted={"ACH-1"})
 
 
+    def test_models_with_calls(self):
+        # ACH-3 has only a synonymous call: it still has mutation data (wild-type for TP53, not unknown)
+        df = pd.DataFrame({"ModelID": ["ACH-1", "ACH-3", "ACH-9"], "HugoSymbol": ["TP53", "TTN", "TP53"]})
+        self.assertEqual(build.models_with_calls(df, {"ACH-1", "ACH-2", "ACH-3"}), {"ACH-1", "ACH-3"})
+
+
 class LineTableTests(unittest.TestCase):
     def test_join_by_rrid_and_signatures(self):
         mapping = pd.DataFrame({"screen_id": ["1", "2", "3"], "cellosaurus_id": ["CVCL_0030", "CVCL_0030", None],
