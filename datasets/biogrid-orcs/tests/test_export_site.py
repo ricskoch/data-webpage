@@ -45,6 +45,12 @@ class ExportSite(unittest.TestCase):
         with self.assertRaises(ValueError):
             export_site.add_treatment(screens, cond)
 
+    def test_drug_pairs_keep_rank_order_and_unmatched_screens(self):
+        c = pd.DataFrame({"screen_id": ["d1", "d1", "d2"], "control_screen_id": ["c2", "c1", None],
+                          "match": ["same_study_library", "same_cell_line", "none"], "rank": [1, 2, None]})
+        self.assertEqual(export_site.drug_pairs(c),
+                         {"d1": [["c2", "same_study_library"], ["c1", "same_cell_line"]], "d2": []})
+
 
 if __name__ == "__main__":
     unittest.main()

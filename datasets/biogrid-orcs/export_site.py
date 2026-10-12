@@ -4,6 +4,7 @@ Usage: python3 -I export_site.py <work_dir>   (reads <work_dir>/out/*.parquet, w
 
 screens.json   one row per screen: label, context, treatment, normalization status (the data overview)
 summary.json   counts for the overview page
+drug_pairs.json  drug screen -> ranked "no drug" screens [[control screen_id, match level], ...] (pairing.py)
 genes.json     symbol -> [perturbation_id, shard] for the lookup box
 g/<NN>.json    per-perturbation rows: [screen index, effect_rank, effect_scaled, effect_z, hit, native score]
 """
@@ -14,6 +15,9 @@ import pathlib
 import sys
 
 import pandas as pd
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import pairing  # noqa: E402
 
 N_SHARDS = 1024
 SCREEN_FIELDS = ["screen_id", "study_id", "cell_line_label", "library_name", "perturbation_type", "selection_type",
@@ -52,6 +56,14 @@ def add_treatment(screens, conditions):
     return out.where(out.notna(), None)
 
 
+def drug_pairs(candidates):
+    """{drug screen_id: [[control screen_id, match], ...]} in rank order; [] when no candidate exists."""
+    out = {}
+    for sid, g in candidates.groupby("screen_id", sort=True):
+        out[str(sid)] = [[c, m] for c, m in zip(g["control_screen_id"], g["match"]) if pd.notna(c)]
+    return out
+
+
 def summary(screens):
     top = lambda c, n=12: screens[c].value_counts().head(n).to_dict()
     return {"screens": int(len(screens)), "studies": int(screens["study_id"].nunique()),
@@ -85,7 +97,10 @@ def main(work):
     screens = add_treatment(screens, pd.read_parquet(out / "conditions.parquet"))
     index = {sid: i for i, sid in enumerate(screens["screen_id"])}
     (site / "screens.json").write_text(json.dumps(screens.to_dict("records"), separators=(",", ":")))
-    (site / "summary.json").write_text(json.dumps(summary(screens), indent=1))
+    candidates = pairing.control_candidates(screens)
+    (site / "drug_pairs.json").write_text(json.dumps(drug_pairs(candidates), separators=(",", ":")))
+    (site / "summary.json").write_text(json.dumps({**summary(screens), "drug_pairs": pairing.summary(candidates)},
+                                                  indent=1))
     pert = pd.read_parquet(out / "perturbations.parquet")
     genes = {str(sym): [str(pid), shard_of(str(pid))] for pid, sym in zip(pert["perturbation_id"], pert["symbol"])}
     (site / "genes.json").write_text(json.dumps(genes, separators=(",", ":")))
