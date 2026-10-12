@@ -1,0 +1,17 @@
+name: Validate recipes
+# Recipe statistics: the SciPy reference test runs in CI on every PR. This manual job also checks the
+# recipe against known biology on the published staging data (after "Publish cell line context to R2 staging").
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  known-biology:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Known-biology cases on staging data
+        run: node --experimental-strip-types --no-warnings tests/reference/validate_recipe_live.mjs | tee -a "$GITHUB_STEP_SUMMARY"
