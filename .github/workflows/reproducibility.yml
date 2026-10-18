@@ -1,0 +1,60 @@
+# Reproducibility of repeated drug screens: unit tests and a build from the published staging data on PRs that change the pipeline;
+# by hand, it can also upload the result to the R2 staging bucket. Staging is not a data release.
+name: Reproducibility
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Upload to the R2 staging bucket after the build
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - datasets/reproducibility/**
+      - .github/workflows/reproducibility.yml
+permissions:
+  contents: read
+concurrency:
+  group: reproducibility-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  R2_BUCKET: data-webpage-staging
+  PREFIX: reproducibility/0.1.0-staging
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: datasets/biogrid-orcs/requirements.txt
+      - run: pip install -r datasets/biogrid-orcs/requirements.txt
+      - name: Unit tests
+        run: python -m unittest discover -s datasets/reproducibility/tests -v
+      - name: Build from the published staging data
+        run: python -I datasets/reproducibility/reproducibility.py "$RUNNER_TEMP/repro"
+      - name: Report to job summary
+        if: always()
+        run: cat "$RUNNER_TEMP/repro/out/report.md" >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: reproducibility-report
+          path: ${{ runner.temp }}/repro/out/*
+          retention-days: 30
+      - name: Upload to R2
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          cd "$RUNNER_TEMP/repro/site/repro"
+          find . -name '*.json' -exec gzip -9 -n {} \; -exec sh -c 'mv "$1.gz" "$1"' _ {} \;
+          aws s3 sync . "s3://$R2_BUCKET/$PREFIX/site/repro/" --endpoint-url "$ENDPOINT" --delete \
+            --content-type application/json --content-encoding gzip --cache-control "public, max-age=3600" --only-show-errors
+          aws s3 cp "$RUNNER_TEMP/repro/out/report.md" "s3://$R2_BUCKET/$PREFIX/report.md" --endpoint-url "$ENDPOINT" --only-show-errors

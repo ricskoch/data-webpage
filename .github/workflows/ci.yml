@@ -44,6 +44,8 @@ jobs:
         run: python -m unittest discover -s datasets/pathways/tests -v
       - name: Associations unit tests
         run: python -m unittest discover -s datasets/associations/tests -v
+      - name: Reproducibility unit tests
+        run: python -m unittest discover -s datasets/reproducibility/tests -v
       - uses: actions/setup-node@v7
         with:
           node-version: 22
