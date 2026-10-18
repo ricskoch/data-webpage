@@ -27,5 +27,8 @@ The "Publish ... to R2 staging" workflows stay manual. Claude may start them wit
 - The kill switch (`kill-switch.md`) works as before.
 - Undo a bad merge: revert the squash commit with a new PR; the revert goes through the same path.
 
+## Status
+Auto-merge and the four required checks were switched on by Richard on 2026-10-18.
+
 ## Settings that only Richard can change
 `allow_auto_merge` on the repository, and the required checks in the ruleset. Both are listed in the PR that introduced this file.
