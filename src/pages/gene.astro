@@ -16,8 +16,14 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           <p id="form-error" class="error" role="alert" hidden></p>
         </form>
       </div>
+      <div id="assoc-box" class="panel" hidden>
+        <h2>Where this gene stands out</h2>
+        <div id="assoc-of" aria-live="polite"><p class="caption">Look up a gene to see the precomputed associations it is part of.</p></div>
+      </div>
       <div id="pathway-box" class="panel" hidden>
-        <h2>Browse by pathway</h2>
+        <h2>Pathways</h2>
+        <div id="pw-of" aria-live="polite"><p class="caption">Look up a gene to see its Reactome pathways.</p></div>
+        <h3>Browse by pathway</h3>
         <p class="caption">Pick a Reactome pathway to see its genes and to limit the gene dropdown to them.</p>
         <div class="lookup">
           <label>Pathway<input id="pw" autocomplete="off" placeholder="e.g. Apoptosis" /></label>
@@ -46,6 +52,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   import { mountCombobox, suggest, exactSymbol } from '../scripts/combobox';
   import { draw, palette } from '../scripts/charts';
   import { groupForChart } from '../scripts/explorer';
+  import { getAssoc, workflowOf, type Index as AssocIndex, type ByGene } from '../scripts/associations';
   import { loadPathways, pathwaysOfGene, genesInCollection, type Pathways, type Pathway } from '../scripts/pathways';
   import { dependencyByMutation, verdict, median as workflowMedian, MIN_LINES, type Comparison } from '../scripts/workflow';
   import { loadLines, loadGene, credit, geneInLine, copyLabel, expressionLabel, type Lines, type LineGene } from '../scripts/context';
@@ -193,10 +200,9 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           dsum.map((d) => `<tr><td><a href="/drug?d=${encodeURIComponent(d.drug)}">${escapeHtml(d.drug)}</a></td><td>${d.screens}</td><td>${d.lines}</td><td>${d.hits}</td></tr>`).join('')}</tbody></table></div>`;
       const ctxCols = lines && gctx;
       const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
-      const inGene = pw ? pathwaysOfGene(pw, key) : [];
-      if (inGene.length) out.querySelector('.stats')!.insertAdjacentHTML('afterend',
-        `<p>Reactome pathways with <span class="gene">${escapeHtml(key)}</span>, most specific first: ${inGene.map((p) =>
-          `<button type="button" class="chip" data-pw="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`).join(' ')}</p>`);
+      currentGene = key;
+      showPathways();
+      showAssociations();
       const stripBox = document.getElementById('strip')!;
       const groupBy = document.getElementById('group-by') as HTMLSelectElement;
       let shown: Row[] = [], shownPick: Row | null = null;
@@ -283,11 +289,12 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     ['PRMT5', 'deeploss', 'MTAP', 'PRMT5 is needed when MTAP is deleted (MTAP sits next to the tumour suppressor CDKN2A)'],
   ];
   function runExample(p: URLSearchParams) {
-    const by = p.get('by') as GroupKind | null, y = p.get('y');
+    const by = p.get('by') as GroupKind | null, y = p.get('y'), t = p.get('t');
     const sel = document.getElementById('by') as HTMLSelectElement | null;
     if (!sel || !by || !(by in KIND_LABELS)) return;
     sel.value = by;
     (document.getElementById('y') as HTMLInputElement).value = y ?? '';
+    if (t) (document.getElementById('tissue') as HTMLSelectElement).value = t;
     (document.getElementById('workflow') as HTMLFormElement).requestSubmit();
   }
 
@@ -305,7 +312,45 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     lookup(symbol);
   };
   // Pathways (optional): picking one limits the gene dropdown to its genes; typing any other known symbol still works.
-  let pw: Pathways | null = null, scope: Pathway | null = null;
+  let pw: Pathways | null = null, scope: Pathway | null = null, currentGene: string | null = null;
+  /** The looked-up gene's own pathways, most specific first (left panel); clicking one lists its genes. */
+  function showPathways() {
+    const box = document.getElementById('pw-of')!;
+    if (!currentGene) return;
+    const own = pw ? pathwaysOfGene(pw, currentGene) : [];
+    box.innerHTML = own.length ? `<p class="caption">Reactome pathways containing <span class="gene">${escapeHtml(currentGene)}</span>, most specific first. Pick one to see its other genes.</p>
+      <p>${own.map((p) => `<button type="button" class="chip" data-pw="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`).join(' ')}</p>`
+      : `<p class="caption">No Reactome pathway lists <span class="gene">${escapeHtml(currentGene)}</span>.</p>`;
+  }
+  /** Precomputed associations (optional, from /associations): the questions in which this gene stands out, one click to run each. */
+  let assoc: { index: AssocIndex; byGene: ByGene } | null | undefined;
+  async function showAssociations() {
+    const box = document.getElementById('assoc-box')!, list = document.getElementById('assoc-of')!;
+    if (!currentGene) return;
+    assoc ??= await Promise.all([getAssoc<AssocIndex>('index.json'), getAssoc<ByGene>('by_gene.json')])
+      .then(([index, byGene]) => ({ index, byGene })).catch(() => null);
+    if (!assoc || !currentGene) return;
+    box.hidden = false;
+    const gi = assoc.index.genes.indexOf(currentGene);
+    const calls = gi < 0 ? [] : assoc.byGene.genes[String(gi)] ?? [];
+    const label = (id: string) => assoc!.index.questions.find((q) => q.id === id)?.label ?? id;
+    list.innerHTML = calls.length ? `<p class="caption"><span class="gene">${escapeHtml(currentGene)}</span> differs between two groups of cell lines in these questions
+        (q at most ${assoc.byGene.fdr}, effect at least ${assoc.byGene.min_effect}). Pick one to run it as a biological workflow below.</p>
+      <ul class="plain">${calls.map(([n, d, q]) => { const id = assoc!.byGene.questions[n], w = workflowOf(id);
+        return `<li>${w ? `<button type="button" class="chip" data-wf="${escapeHtml(id)}">${escapeHtml(label(id))}</button>` : escapeHtml(label(id))}
+          <small>effect ${fmt(d)}, q ${q.toExponential(1)}</small></li>`; }).join('')}</ul>
+      <p class="caption"><a href="/associations">All questions</a>. Each question is corrected separately for testing many genes.</p>`
+      : `<p class="caption">No precomputed question calls <span class="gene">${escapeHtml(currentGene)}</span> at these limits. <a href="/associations">Browse all associations</a>.</p>`;
+  }
+  /** Run the workflow that asks the same question as a precomputed association. */
+  function runAssociation(id: string) {
+    const w = workflowOf(id), sel = document.getElementById('by') as HTMLSelectElement | null;
+    if (!w || !sel) return;
+    if (w.kind === 'mutation') { sel.value = 'mutation'; (document.getElementById('y') as HTMLInputElement).value = w.gene; }
+    else { sel.value = 'tissue'; (document.getElementById('tissue') as HTMLSelectElement).value = w.tissue; }
+    (document.getElementById('workflow') as HTMLFormElement).requestSubmit();
+    document.getElementById('workflow')!.scrollIntoView({ block: 'nearest' });
+  }
   const pwInput = document.getElementById('pw') as HTMLInputElement;
   const pwOut = document.getElementById('pw-out')!, pwClear = document.getElementById('pw-clear')!;
   function choosePathway(name: string) {
@@ -321,13 +366,15 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   mountCombobox(pwInput, () => pw?.pathways.map((p) => p.name) ?? [], choosePathway);
   pwClear.addEventListener('click', () => { pwInput.value = ''; choosePathway(''); });
   document.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-gene], [data-pw]');
-    if (b?.dataset.gene) { input.value = b.dataset.gene; go(b.dataset.gene); }
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-gene], [data-pw], [data-wf]');
+    if (b?.dataset.wf) runAssociation(b.dataset.wf);
+    else if (b?.dataset.gene) { input.value = b.dataset.gene; go(b.dataset.gene); }
     else if (b?.dataset.pw) { choosePathway(b.dataset.pw); document.getElementById('pathway-box')!.scrollIntoView({ block: 'nearest' }); }
   });
   loadPathways().then((p) => {
     if (!p) return;
     pw = p;
+    showPathways();
     document.getElementById('pathway-box')!.hidden = false;
     document.getElementById('pw-credit')!.innerHTML = `<small>Pathway data: <a href="https://reactome.org">Reactome</a> release ${escapeHtml(p.release)}, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small>`;
   });

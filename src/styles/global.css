@@ -138,6 +138,9 @@ tbody tr[tabindex]:hover { background: var(--selected); }
 
 /* Pages with their own left panel (gene explorer): controls left, charts and table right */
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem .9rem; margin-bottom: var(--space-2); }
+.panel h3 { font-size: .9rem; margin: .75rem 0 .25rem; }
+ul.plain { list-style: none; padding: 0; margin: 0 0 .5rem; }
+ul.plain li { margin: .35rem 0; }
 .panel h2 { font-size: 1rem; margin: 0 0 .4rem; }
 .panel .lookup { flex-direction: column; align-items: stretch; margin: .4rem 0; }
 .panel .filters { grid-template-columns: minmax(0, 1fr); margin: 0; }

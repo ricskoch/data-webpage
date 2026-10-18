@@ -54,7 +54,7 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <script>
-  import { getAssoc, callOf, topHits, type Index, type Result, type Question, type Call } from '../scripts/associations';
+  import { getAssoc, callOf, topHits, geneLink, type Index, type Result, type Question, type Call } from '../scripts/associations';
   import { draw, palette } from '../scripts/charts';
   import { mountCombobox, exactSymbol } from '../scripts/combobox';
   import { escapeHtml, fmt } from '../scripts/data';
@@ -95,7 +95,7 @@ import Base from '../layouts/Base.astro';
     return draw(el, build('scattergl'), over).catch(() => draw(el, build('scatter'), over)).then(() => {
       const gd = el as any;
       gd.removeAllListeners?.('plotly_click');
-      gd.on('plotly_click', (ev: any) => { const g = ev.points?.[0]?.customdata; if (g) location.href = `/gene?g=${encodeURIComponent(g)}`; });
+      gd.on('plotly_click', (ev: any) => { const g = ev.points?.[0]?.customdata; if (g) location.href = geneLink(g, q.id); });
     });
   }
 
@@ -114,12 +114,12 @@ import Base from '../layouts/Base.astro';
       </ul>
       <figure><div id="volcano" class="chart" role="group" aria-label="Volcano plot: effect against evidence for every gene tested. The table below lists the strongest genes."></div>
         <figcaption>Fig. 1. One dot per gene. Left: more essential in ${escapeHtml(q.a)}; right: less. Higher means stronger evidence. Coloured dots pass the
-          q and effect limits set at the left; click a dot to open the gene.</figcaption></figure>
+          q and effect limits set at the left; click a dot to open the gene with this question already run.</figcaption></figure>
       <div class="table-box" tabindex="0" role="region" aria-label="Strongest genes"><table>
         <caption>Table 1. The ${Math.min(hits.length, 50)} strongest of ${hits.length.toLocaleString('en')} genes called, smallest q first.</caption>
         <thead><tr><th scope="col">Gene</th><th scope="col" class="num">Effect</th><th scope="col" class="num">p</th><th scope="col" class="num">q</th>
           <th scope="col" class="num">Lines in A</th><th scope="col" class="num">Lines in B</th><th scope="col">Meaning</th></tr></thead>
-        <tbody>${hits.slice(0, 50).map((h) => `<tr><td><a class="gene" href="/gene?g=${encodeURIComponent(h.gene)}">${escapeHtml(h.gene)}</a></td>
+        <tbody>${hits.slice(0, 50).map((h) => `<tr><td><a class="gene" href="${geneLink(h.gene, q.id)}">${escapeHtml(h.gene)}</a></td>
           <td class="num">${fmt(h.d)}</td><td class="num">${sci(h.p)}</td><td class="num">${sci(h.q)}</td><td class="num">${h.na}</td><td class="num">${h.nb}</td>
           <td>${h.call === 'more' ? `more essential in ${escapeHtml(q.a)}` : `less essential in ${escapeHtml(q.a)}`}</td></tr>`).join('')}</tbody></table></div>`;
     volcano($('volcano'), fdr, minEffect).catch((err) => { $('volcano').textContent = `Could not draw the plot: ${err}`; });

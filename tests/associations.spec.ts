@@ -26,3 +26,18 @@ test('topHits: equal q ties go to the larger effect, and null q is never a hit',
   const t: Result = { g: [0, 1, 2], d: [-0.3, -0.9, -0.9], p: [0.001, 0.001, null], q: [0.01, 0.01, null], na: [5, 5, 5], nb: [5, 5, 5] };
   expect(topHits(t, ['X', 'Y', 'Z'], 0.05, 0, 10).map((h) => h.gene)).toEqual(['Y', 'X']);
 });
+
+test('workflowOf: precomputed questions map to the workflow that asks the same thing', async () => {
+  const { workflowOf } = await import('../src/scripts/associations');
+  expect(workflowOf('mut:KRAS')).toEqual({ kind: 'mutation', gene: 'KRAS' });
+  expect(workflowOf('tissue:Peripheral Nervous System')).toEqual({ kind: 'tissue', tissue: 'Peripheral Nervous System' });
+  expect(workflowOf('tissue:')).toBeNull();
+  expect(workflowOf('other:x')).toBeNull();
+});
+
+test('geneLink: opens the gene explorer with the same question already run', async () => {
+  const { geneLink } = await import('../src/scripts/associations');
+  expect(geneLink('EGFR', 'mut:KRAS')).toBe('/gene?g=EGFR&by=mutation&y=KRAS');
+  expect(geneLink('EGFR', 'tissue:Peripheral Nervous System')).toBe('/gene?g=EGFR&by=tissue&t=Peripheral%20Nervous%20System');
+  expect(geneLink('EGFR', 'nonsense')).toBe('/gene?g=EGFR');
+});

@@ -116,6 +116,13 @@ class EndToEnd(unittest.TestCase):
             self.assertLess(f["d"][i], -0.8)
             self.assertLess(f["q"][i], 0.05)
             self.assertTrue(any(c[0] == "mut:KRAS" and c[3] for c in checks))
+            by_gene = json.loads((site / "by_gene.json").read_text())
+            self.assertIn("mut:KRAS", by_gene["questions"])
+            n, d, q = by_gene["genes"]["0"][0]  # KRAS is gene 0: its strongest call is the KRAS-mutant question
+            self.assertEqual(by_gene["questions"][n], "mut:KRAS")
+            self.assertLess(d, -0.8)
+            self.assertLess(q, 0.05)
+            self.assertNotIn("1", by_gene["genes"])  # NEUTRAL is never called
 
 
 if __name__ == "__main__":

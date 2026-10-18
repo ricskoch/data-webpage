@@ -204,3 +204,28 @@ test('/gene: pathway picker limits the gene dropdown and offers its genes', asyn
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });
+
+// Precomputed associations feed the gene explorer: the questions in which the gene stands out run as workflows with one click.
+test('/gene: precomputed associations of the gene can be run as a workflow', async ({ page }) => {
+  await fakeData(page);
+  await fakeContext(page);
+  await page.route('**/associations/**', (route) => {
+    const u = route.request().url();
+    const body = u.endsWith('index.json') ? { release: 't', min_lines: 5, fdr: 0.05, genes: ['TP53'],
+      questions: [{ id: 'mut:TP53', label: 'TP53-mutant vs wild-type lines', a: 'TP53-mutant', b: 'wild-type', file: 'f/000.json', lines_a: 1, lines_b: 1, tested: 1, significant: 1 }] }
+      : u.endsWith('by_gene.json') ? { questions: ['mut:TP53'], fdr: 0.05, min_effect: 0.2, genes: { 0: [[0, -0.5, 1e-5]] } } : null;
+    return body ? route.fulfill({ json: body }) : route.fulfill({ status: 404 });
+  });
+  await page.goto('/gene?g=TP53');
+  await expect(page.getByRole('heading', { name: 'Where this gene stands out' })).toBeVisible();
+  await page.getByRole('button', { name: 'TP53-mutant vs wild-type lines' }).click();
+  await expect(page.locator('#workflow-out')).toContainText('TP53-mutant lines: 1; wild-type lines: 1');
+  await expect(page.locator('#by')).toHaveValue('mutation');
+});
+
+test('/gene: ?by=tissue&t= runs the tissue workflow (links from the associations page)', async ({ page }) => {
+  await fakeData(page);
+  await fakeContext(page);
+  await page.goto('/gene?g=TP53&by=tissue&t=Myeloid');
+  await expect(page.locator('#workflow-out')).toContainText('Myeloid lines: 1; all other tissues lines: 1');
+});
