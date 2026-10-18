@@ -25,6 +25,8 @@ SCREENS = "https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/biogrid-orcs/0.1.
 CONTEXT = "https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/cell-line-context/0.1.0-staging/site/ctx"
 MIN_LINES = 5
 FDR = 0.05
+MIN_EFFECT = 0.2   # the page's default; by_gene.json lists only genes called at q <= FDR with at least this effect
+PER_GENE = 6       # strongest calls kept per gene in by_gene.json
 # Textbook cases that must come out right on real data: [question, gene, expected sign of the effect, why].
 KNOWN = [
     ("mut:KRAS", "KRAS", -1, "KRAS-mutant lines need KRAS"),
@@ -162,11 +164,14 @@ def build(screens_base, context_base, site):
     (site / "f").mkdir(parents=True, exist_ok=True)
     index, checks = [], []
     results = {}
+    called = defaultdict(list)  # gene index -> [(q, question number, effect)]
     for n, (qid, label, a_name, b_name, a_mask, inc) in enumerate(questions(lines)):
         eff, p, na, nb = test_question(matrix, a_mask, inc)
         q = benjamini_hochberg(p)
         keep = np.flatnonzero(~np.isnan(p))
         results[qid] = (names, eff, p, q)
+        for i in np.flatnonzero(~np.isnan(q) & (q <= FDR) & (np.abs(np.nan_to_num(eff)) >= MIN_EFFECT)):
+            called[int(i)].append((float(q[i]), n, float(eff[i])))
         (site / "f" / f"{n:03d}.json").write_text(json.dumps({
             "g": keep.tolist(), "d": [round(float(eff[i]), 4) for i in keep], "p": [sig3(p[i]) for i in keep],
             "q": [sig3(q[i]) for i in keep], "na": na[keep].tolist(), "nb": nb[keep].tolist()}, separators=(",", ":")))
@@ -181,6 +186,10 @@ def build(screens_base, context_base, site):
             checks.append((qid, gene, why, ok, float(eff[i]), float(q[i])))
         else:
             checks.append((qid, gene, why, False, math.nan, math.nan))
+    (site / "by_gene.json").write_text(json.dumps({
+        "questions": [q["id"] for q in index], "fdr": FDR, "min_effect": MIN_EFFECT,
+        "genes": {str(g): [[n, round(d, 3), sig3(qv)] for qv, n, d in sorted(v)[:PER_GENE]] for g, v in sorted(called.items())}},
+        separators=(",", ":")))
     (site / "index.json").write_text(json.dumps({
         "release": ctx.get("release"), "min_lines": MIN_LINES, "fdr": FDR, "genes": names, "questions": index},
         separators=(",", ":")))
