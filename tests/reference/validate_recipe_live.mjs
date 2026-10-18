@@ -13,9 +13,9 @@ const CASES = [ // [knocked-out gene X, gene Y, expected sign of median(group A)
   ['TP53', 'TP53', -1, 'losing TP53 helps TP53-wild-type lines grow; mutant lines have nothing left to lose'],
   ['MDM2', 'TP53', 1, 'MDM2 is needed only to hold back working TP53, so mutant lines do not need it'],
   ['ERBB2', 'ERBB2', -1, 'copy-number artefact check: lines with extra ERBB2 copies need ERBB2', 'gain'],
-  ['SMARCA2', 'SMARCA4', -1, 'paralog pair: SMARCA2 is needed when SMARCA4 is switched off', 'expression'],
+  ['SMARCA2', 'SMARCA4', -1, 'paralog pair: SMARCA2 is needed when SMARCA4 is mutated'],
   ['ARID1B', 'ARID1A', -1, 'paralog pair: ARID1B is needed when ARID1A is mutated'],
-  ['PRMT5', 'MTAP', -1, 'PRMT5 is needed when its neighbour-linked partner MTAP is lost', 'copy'],
+  ['PRMT5', 'MTAP', -1, 'PRMT5 is needed when its neighbour-linked partner MTAP is deleted', 'deeploss'],
 ];
 const get = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.json(); };
 const shard = (n) => String(n).padStart(4, '0');
