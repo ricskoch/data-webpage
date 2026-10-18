@@ -90,20 +90,24 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         <div class="lookup"><label>Drugs shown<select id="cov-drugs">${opts([25, 50, 100], cov.drugs.length, 'drugs')}</select></label>
           <label>Cell lines shown<select id="cov-lines">${opts([15, 30, 60], cov.lines.length, 'cell lines')}</select></label></div>
         <p id="cov-note"></p>
-        <div class="chart" id="c-cov" role="img" aria-label="Heat map of the number of screens per drug and cell line"></div></div>`;
+        <div class="table-box" style="max-height:70vh" tabindex="0" role="region" aria-label="Heat map of the number of screens per drug and cell line, scrollable">
+          <div class="chart" id="c-cov" role="img" aria-label="Heat map of the number of screens per drug and cell line"></div></div></div>`;
     const dSel = document.getElementById('cov-drugs') as HTMLSelectElement, lSel = document.getElementById('cov-lines') as HTMLSelectElement;
     dSel.value = '25'; if (dSel.value !== '25') dSel.selectedIndex = dSel.options.length - 1;
     lSel.selectedIndex = lSel.options.length - 1; // all cell lines by default
     const plot = () => {
       const drugs = cov.drugs.slice(0, Number(dSel.value)), lines = cov.lines.slice(0, Number(lSel.value));
       document.getElementById('cov-note')!.textContent = `Showing ${drugs.length} drugs and ${lines.length} cell lines, ordered by number of drug screens. Hover a square for the study count and the largest number of genes covered.`;
-      document.getElementById('c-cov')!.style.height = `${180 + drugs.length * 22}px`;
+      // fixed cell size (22 px high, 18 px wide); the box scrolls instead of squashing the cells
+      const chartEl = document.getElementById('c-cov')!;
+      chartEl.style.height = `${180 + drugs.length * 22}px`;
+      chartEl.style.minWidth = `${280 + lines.length * 18}px`;
       const z = drugs.map((d) => lines.map((l) => cov.cells.get(`${d.drug}|${l.line}`)?.screens ?? null));
       const hover = drugs.map((d) => lines.map((l) => { const c = cov.cells.get(`${d.drug}|${l.line}`);
         return c ? `${d.drug} in ${l.line}<br>${c.screens} screen(s), ${c.studies} stud${c.studies === 1 ? 'y' : 'ies'}<br>up to ${c.genes.toLocaleString('en')} genes` : 'not screened'; }));
       draw(document.getElementById('c-cov')!, [{ type: 'heatmap', x: lines.map((l) => l.line), y: drugs.map((d) => d.drug), z, text: hover,
-        hoverinfo: 'text', xgap: lines.length > 40 ? 0 : 2, ygap: 2, colorscale: [[0, '#cfe3f3'], [1, '#08519c']], colorbar: { title: 'screens' } }],
-        { margin: { l: 150, r: 16, t: 8, b: 110 }, yaxis: { autorange: 'reversed' }, xaxis: { tickangle: -90, dtick: 1, tickfont: { size: lines.length > 60 ? 8 : 11 } } }, { displayModeBar: false });
+        hoverinfo: 'text', xgap: 1, ygap: 2, colorscale: [[0, '#cfe3f3'], [1, '#08519c']], colorbar: { title: 'screens' } }],
+        { margin: { l: 150, r: 16, t: 8, b: 110 }, yaxis: { autorange: 'reversed' }, xaxis: { tickangle: -90, dtick: 1, tickfont: { size: 11 } } }, { displayModeBar: false });
     };
     dSel.addEventListener('change', plot); lSel.addEventListener('change', plot);
     plot();
