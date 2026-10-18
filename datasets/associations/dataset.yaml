@@ -13,4 +13,4 @@ method:
   min_lines_per_group: 5
   multiple_testing: Benjamini-Hochberg false discovery rate over all genes tested for one question
   flagged_lines: left out (misidentified or contaminated per Cellosaurus)
-  questions: each tissue against all other tissues; each driver-panel gene mutated against wild-type
+  questions: each tissue against all other tissues; each driver-panel gene mutated against wild-type; per driver-panel gene also loss of function (DepMap LikelyLoF) and hotspot (DepMap Hotspot, not LikelyLoF) against wild-type (added 2026-10-18, chosen by Richard)

@@ -55,8 +55,10 @@ class LineValues(unittest.TestCase):
         self.assertTrue(math.isnan(v[2]))
 
 
-def lines(n, lineage, drivers=(), problematic=(), no_calls=()):
-    return [{"lineage": lineage, "problematic": i in problematic, "drivers": [f"{d} p.X1Y" for d in drivers if i < 8],
+def lines(n, lineage, drivers=(), problematic=(), no_calls=(), lof=(), gof=()):
+    """lof/gof: genes carried as loss-of-function / hotspot mutation by the first 8 lines (also listed in drivers)."""
+    return [{"lineage": lineage, "problematic": i in problematic, "drivers": [f"{d} p.X1Y" for d in (*drivers, *lof, *gof) if i < 8],
+             "drivers_lof": [d for d in lof if i < 8], "drivers_gof": [d for d in gof if i < 8],
              **({"mutation_calls": False} if i in no_calls else {})} for i in range(n)]
 
 
@@ -71,6 +73,37 @@ class Questions(unittest.TestCase):
         (_, _, _, _, a, inc), = [q for q in build.questions(ls) if q[0] == "mut:KRAS"]
         self.assertFalse(inc[0] or inc[1])
         self.assertEqual(int(a.sum()), 6)  # lines 2 to 7; the mutated lines 0 and 1 are excluded
+
+    def test_loss_and_gain_of_function_are_compared_with_wild_type_lines_only(self):
+        # lines 0-7 carry TP53 loss of function, lines 8-15 a TP53 hotspot, 16-19 a passenger missense, 20-39 are wild-type
+        ls = lines(40, "Lung")
+        for i in range(8):
+            ls[i].update(drivers=["TP53 p.R1*"], drivers_lof=["TP53"])
+        for i in range(8, 16):
+            ls[i].update(drivers=["TP53 p.R175H"], drivers_gof=["TP53"])
+        for i in range(16, 20):
+            ls[i].update(drivers=["TP53 p.A1B"])
+        qs = {q[0]: q for q in build.questions(ls)}
+        self.assertEqual(sorted(k for k in qs if k.startswith("mut")), ["mut:TP53", "mutgof:TP53", "mutlof:TP53"])
+        _, label, a_name, b_name, a, inc = qs["mutlof:TP53"]
+        self.assertEqual((int(a.sum()), int(inc.sum())), (8, 28))  # 8 loss of function + 20 wild-type
+        self.assertEqual(np.flatnonzero(a).tolist(), list(range(8)))
+        self.assertFalse(inc[8:20].any())  # hotspot and passenger lines are neither group
+        self.assertEqual((a_name, b_name), ("TP53 loss-of-function", "wild-type"))
+        self.assertIn("loss-of-function", label)
+        self.assertEqual(np.flatnonzero(qs["mutgof:TP53"][4]).tolist(), list(range(8, 16)))
+
+    def test_a_line_with_both_classes_in_one_gene_is_in_neither_class_nor_wild_type(self):
+        ls = lines(30, "Lung")
+        for i in range(8):
+            ls[i].update(drivers=["KRAS p.G12D", "KRAS p.R1*"], drivers_lof=["KRAS"], drivers_gof=["KRAS"])
+        ids = [q[0] for q in build.questions(ls)]
+        self.assertNotIn("mutlof:KRAS", ids)
+        self.assertNotIn("mutgof:KRAS", ids)
+
+    def test_files_without_class_lists_give_no_class_questions(self):
+        ls = [{k: v for k, v in l.items() if k not in ("drivers_lof", "drivers_gof")} for l in lines(20, "Lung", drivers=["KRAS"])]
+        self.assertEqual([q[0] for q in build.questions(ls)], ["mut:KRAS"])
 
 
 class TestQuestion(unittest.TestCase):

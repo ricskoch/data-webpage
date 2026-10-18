@@ -139,6 +139,18 @@ def drivers(muts, panel):
             for d, g in hit.groupby("depmap_id")}
 
 
+def driver_classes(muts, panel):
+    """Per line: the panel genes with a loss-of-function mutation (DepMap LikelyLoF) and with a gain-of-function-like
+    one (DepMap Hotspot, not LikelyLoF). A gene can be in both lists; a passenger missense is in neither."""
+    hit = muts[muts["symbol"].isin(panel)]
+    out = {}
+    for d, g in hit.groupby("depmap_id"):
+        lof = g["likely_lof"].astype(bool)
+        gof = g["hotspot"].astype(bool) & ~lof
+        out[d] = {"lof": sorted(set(g.loc[lof, "symbol"])), "gof": sorted(set(g.loc[gof, "symbol"]))}
+    return out
+
+
 def main(work):
     out, ctx, site = work / "out", work / "out" / "context", work / "site" / "ctx"
     (site / "g").mkdir(parents=True, exist_ok=True)
@@ -183,6 +195,9 @@ def main(work):
 
     drv = drivers(muts, set(cfg["driver_panel"]))
     lines["drivers"] = lines["depmap_id"].map(lambda d: drv.get(d, []))
+    cls = driver_classes(muts, set(cfg["driver_panel"]))
+    lines["drivers_lof"] = lines["depmap_id"].map(lambda d: cls.get(d, {}).get("lof", []))
+    lines["drivers_gof"] = lines["depmap_id"].map(lambda d: cls.get(d, {}).get("gof", []))
     order = lines["depmap_id"].tolist()
     by_line = {c: i for i, c in enumerate(lines["cellosaurus_id"])}
     screen_line = {s: by_line[c] for s, c in zip(mapping["screen_id"], mapping["cellosaurus_id"]) if c in by_line}
@@ -191,7 +206,7 @@ def main(work):
                                                  "screen_line": screen_line}, separators=(",", ":")))
     report.append(f"- Screens linked to a line with DepMap data: {len(screen_line):,}")
 
-    for name, df in (("cell_lines", lines.astype({"drivers": str})), ("screen_cell_lines", mapping),
+    for name, df in (("cell_lines", lines.astype({"drivers": str, "drivers_lof": str, "drivers_gof": str})), ("screen_cell_lines", mapping),
                      ("mutations", muts), ("expression", expr), ("copy_number", cn)):
         df.to_parquet(ctx / f"{name}.parquet", index=False)
 

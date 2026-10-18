@@ -98,3 +98,21 @@ class ShardTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DriverClassTests(unittest.TestCase):
+    MUTS = pd.DataFrame({
+        "depmap_id": ["A", "A", "B", "B", "C", "D"],
+        "symbol": ["TP53", "KRAS", "TP53", "TP53", "TP53", "OTHER"],
+        "protein_change": ["p.R1*", "p.G12D", "p.R175H", "p.R1*", "p.A1B", "p.X1Y"],
+        "likely_lof": [True, False, False, True, False, True],
+        "hotspot": [False, True, True, True, False, False],
+    })
+
+    def test_loss_of_function_is_the_depmap_flag_and_gain_needs_a_hotspot_that_is_not_loss(self):
+        got = build.driver_classes(self.MUTS, {"TP53", "KRAS"})
+        self.assertEqual(got["A"], {"lof": ["TP53"], "gof": ["KRAS"]})
+        # B has a hotspot missense (gain) and a truncating hotspot (loss): both classes are listed, nothing is hidden
+        self.assertEqual(got["B"], {"lof": ["TP53"], "gof": ["TP53"]})
+        self.assertEqual(got["C"], {"lof": [], "gof": []})  # passenger missense: mutated but in neither class
+        self.assertNotIn("D", got)  # gene outside the panel
