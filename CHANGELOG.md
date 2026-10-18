@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Auto-merge workflow now creates the `needs-richard` label if it does not exist (it was silently missing on PR #28).
 - Autonomy: `auto-merge.yml` turns on GitHub auto-merge for `claude/*` and Dependabot patch/minor PRs unless they touch protected files or are marked `needs-richard`; rules in `docs/ops/autonomy.md`. Needs two settings changed by Richard (allow auto-merge; require `site` and `data-pipeline-tests`).
 - M3 recipe 2 (method approved by Richard 2026-10-11): on `/gene`, "Does it depend on a mutation?" compares the gene's essential-scale values between lines with and without a mutation in a second gene. One value per line (median of its screens), difference of medians with a seeded bootstrap 95% interval, two-sided Mann-Whitney test, at least 5 lines per group; flagged lines and lines without mutation calls are left out (`src/scripts/recipe.ts`). Independent SciPy reference test in CI; manual "Validate recipes" workflow checks known biology (KRAS, BRAF, PIK3CA, TP53, MDM2) on staging data. `lines.json` gains `mutation_calls`.
 - F20/F21: drug and other treatment names now reach the site. `export_site.py` joins the `conditions` table into `screens.json` (`treatment`, `treatment_dose`, `treatment_duration`); `/data` and `/gene` get a Treatment column, a Treatment filter and treatment search; `/data` also gets a Setup filter (drug, virus, timecourse...). Needs one re-run of "Publish data to R2 staging".
