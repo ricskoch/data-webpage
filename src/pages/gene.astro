@@ -255,7 +255,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     if (!sel || !by || !(by in KIND_LABELS)) return;
     sel.value = by;
     (document.getElementById('y') as HTMLInputElement).value = y ?? '';
-    document.getElementById('workflow')!.requestSubmit();
+    (document.getElementById('workflow') as HTMLFormElement).requestSubmit();
   }
 
   // Gene symbols load up front so the dropdown and the validation below work before the first lookup.
