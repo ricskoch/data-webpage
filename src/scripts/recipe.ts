@@ -92,10 +92,10 @@ export function dependencyByMutation(perScreen: { line: number; value: number }[
   return { mutant: mut, wildtype: wt, testable: true, diff, ci: bootstrapDiff(a, b), u, p };
 }
 
-/** Plain-language reading, based on whether the 95% interval excludes zero. */
-export function verdict(c: Comparison, x: string, y: string): string {
-  if (!c.testable) return `Not enough lines to compare (needs at least ${MIN_LINES} ${y}-mutant and ${MIN_LINES} ${y}-wild-type lines).`;
-  if (c.ci![0] > 0) return `Knocking out ${x} hurts ${y}-mutant lines less (or helps them more) than wild-type lines.`;
-  if (c.ci![1] < 0) return `Knocking out ${x} hurts ${y}-mutant lines more (or helps them less) than wild-type lines.`;
-  return `No clear difference: ${x} behaves about the same whether or not ${y} is mutated.`;
+/** Plain-language reading, based on whether the 95% interval excludes zero. `names` labels the two groups. */
+export function verdict(c: Comparison, x: string, y: string, names = { a: `${y}-mutant`, b: 'wild-type' }): string {
+  if (!c.testable) return `Not enough lines to compare (needs at least ${MIN_LINES} ${names.a} and ${MIN_LINES} ${names.b} lines).`;
+  if (c.ci![0] > 0) return `Knocking out ${x} hurts ${names.a} lines less (or helps them more) than ${names.b} lines.`;
+  if (c.ci![1] < 0) return `Knocking out ${x} hurts ${names.a} lines more (or helps them less) than ${names.b} lines.`;
+  return `No clear difference: ${x} behaves about the same in ${names.a} and ${names.b} lines.`;
 }

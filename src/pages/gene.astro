@@ -17,6 +17,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 <script>
   import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
+  import { makeGrouping, KIND_LABELS, NEEDS_GENE, type GroupKind } from '../scripts/grouping';
   import { dependencyByMutation, verdict, median as recipeMedian, MIN_LINES, type Comparison } from '../scripts/recipe';
   import { loadLines, loadGene, credit, geneInLine, copyLabel, expressionLabel, type Lines, type LineGene } from '../scripts/context';
 
@@ -43,41 +44,45 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   const pFmt = (p: number | null) => (p === null || Number.isNaN(p) ? '–' : p < 0.001 ? p.toExponential(1) : p.toFixed(3));
 
   /** Per-line values of the two groups on the essential scale (-1 core-essential, 0 non-essential). */
-  function groupPlot(c: Comparison, y: string): string {
+  function groupPlot(c: Comparison, names: { a: string; b: string }): string {
     const all = [...c.mutant, ...c.wildtype].map((v) => v.value);
     const lo = Math.min(-1.5, ...all), hi = Math.max(0.5, ...all), W = 600, x = (v: number) => 110 + ((v - lo) / (hi - lo)) * (W - 130);
     const row = (vs: { value: number }[], y0: number) => vs.map((v, i) => `<circle class="dot" cx="${x(v.value).toFixed(1)}" cy="${y0 + (i % 5) * 3}" r="3"/>`).join('');
-    return `<svg class="strip" viewBox="0 0 ${W} 100" role="img" aria-label="Per-line values: ${c.mutant.length} ${escapeHtml(y)}-mutant and ${c.wildtype.length} wild-type lines">
-      <text x="0" y="26">${escapeHtml(y)} mutant</text>${row(c.mutant, 14)}<text x="0" y="56">wild-type</text>${row(c.wildtype, 44)}
+    return `<svg class="strip" viewBox="0 0 ${W} 100" role="img" aria-label="Per-line values: ${c.mutant.length} ${escapeHtml(names.a)} and ${c.wildtype.length} ${escapeHtml(names.b)} lines">
+      <text x="0" y="26">${escapeHtml(names.a)}</text>${row(c.mutant, 14)}<text x="0" y="56">${escapeHtml(names.b)}</text>${row(c.wildtype, 44)}
       <line class="axis" x1="110" x2="${W - 20}" y1="76" y2="76"/>
       <text x="${x(-1).toFixed(1)}" y="94" text-anchor="middle">−1 core-essential</text><text x="${x(0).toFixed(1)}" y="94" text-anchor="middle">0</text></svg>`;
   }
 
-  async function compare(x: string, rows: GeneRow[], ySymbol: string) {
+  async function compare(x: string, rows: GeneRow[], kind: GroupKind, ySymbol: string, tissue: string) {
     const box = document.getElementById('recipe-out')!;
-    const y = findGene(ySymbol);
-    if (!y) { box.innerHTML = `<p>No gene <span class="gene">${escapeHtml(ySymbol)}</span> in this collection.</p>`; return; }
-    const yctx = await loadGene(...genes![y]);
-    if (!yctx) { box.innerHTML = `<p>No mutation data for <span class="gene">${escapeHtml(y)}</span>.</p>`; return; }
+    let y = '', yctx: Awaited<ReturnType<typeof loadGene>>;
+    if (NEEDS_GENE.includes(kind)) {
+      const found = findGene(ySymbol);
+      if (!found) { box.innerHTML = `<p>No gene <span class="gene">${escapeHtml(ySymbol)}</span> in this collection.</p>`; return; }
+      y = found;
+      yctx = await loadGene(...genes![y]);
+      if (!yctx) { box.innerHTML = `<p>No cell line data for <span class="gene">${escapeHtml(y)}</span>.</p>`; return; }
+    }
     const perScreen = rows.flatMap((r) => {
       const li = lines!.screen_line[String(screens![r[0]].screen_id)];
       return li === undefined || r[2] === null ? [] : [{ line: li, value: r[2] }];
     });
-    // Lines without mutation calls or flagged as misidentified/contaminated are left out.
-    const include = (l: number) => lines!.lines[l].mutation_calls !== false && !lines!.lines[l].problematic;
-    const c = dependencyByMutation(perScreen, new Set(yctx.m.map((m) => m[0])), include);
-    const X = `<span class="gene">${escapeHtml(x)}</span>`, Y = `<span class="gene">${escapeHtml(y)}</span>`;
+    const g = makeGrouping(kind, lines!, y, yctx, tissue);
+    const c = dependencyByMutation(perScreen, g.group, g.include);
+    const X = `<span class="gene">${escapeHtml(x)}</span>`;
     const med = (vs: { value: number }[]) => fmt(recipeMedian(vs.map((v) => v.value)));
-    box.innerHTML = `<p><strong>${escapeHtml(verdict(c, x, y))}</strong></p>
+    box.innerHTML = `<p><strong>${escapeHtml(verdict(c, x, y, g))}</strong></p>
       <ul>
-        <li>${Y}-mutant lines: ${c.mutant.length}; ${Y}-wild-type lines: ${c.wildtype.length} (at least ${MIN_LINES} each needed).</li>
-        ${c.testable ? `<li>Median ${X} scale: ${med(c.mutant)} in mutant vs ${med(c.wildtype)} in wild-type lines.
+        <li>${escapeHtml(g.a)} lines: ${c.mutant.length}; ${escapeHtml(g.b)} lines: ${c.wildtype.length} (at least ${MIN_LINES} each needed).</li>
+        ${c.testable ? `<li>Median ${X} scale: ${med(c.mutant)} in ${escapeHtml(g.a)} vs ${med(c.wildtype)} in ${escapeHtml(g.b)} lines.
           Difference ${fmt(c.diff)} (95% interval ${fmt(c.ci![0])} to ${fmt(c.ci![1])}), Mann-Whitney p = ${pFmt(c.p)}.</li>` : ''}
       </ul>
-      ${c.mutant.length + c.wildtype.length ? `<figure>${groupPlot(c, y)}<figcaption>Fig. 2. One dot per cell line: the median of its screens on the essential scale for ${X}.</figcaption></figure>` : ''}
+      ${c.mutant.length + c.wildtype.length ? `<figure>${groupPlot(c, g)}<figcaption>Fig. 2. One dot per cell line: the median of its screens on the essential scale for ${X}.</figcaption></figure>` : ''}
       <p><small>How to read this: one value per cell line, so a line screened often counts once. This answers one question;
         it is not corrected for testing many genes. Tissues are mixed, so tissue can explain a difference. Many screens come
-        from DepMap's own studies, which also produced the mutation data.${lines!.lines.some((l) => l.mutation_calls === undefined)
+        from DepMap's own studies, which also produced the omics data. Lines in neither group, and lines flagged as misidentified
+        or contaminated, are left out.${kind === 'mutation' && lines!.lines.some((l) => l.mutation_calls === undefined)
           ? ' This data release does not say which lines lack mutation calls; such lines count as wild-type.' : ''}</small></p>`;
   }
 
@@ -110,8 +115,10 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         <figure>${strip(ranked.map((r) => r[1]!))}
           <figcaption>Fig. 1. Rank of <span class="gene">${escapeHtml(key)}</span> within each comparable screen. A gene that is essential everywhere sits at the left.</figcaption></figure>
         ${lines ? `<h3>Does it depend on a mutation?</h3>
-        <form id="recipe" class="lookup"><label>Compare lines with and without a mutation in<br />
-          <input id="y" autocomplete="off" placeholder="e.g. KRAS" required /></label>
+        <form id="recipe" class="lookup">
+          <label>Compare lines by<br /><select id="by">${(Object.keys(KIND_LABELS) as GroupKind[]).map((k) => `<option value="${k}">${KIND_LABELS[k]}</option>`).join('')}</select></label>
+          <label id="y-wrap">Gene<br /><input id="y" autocomplete="off" placeholder="e.g. KRAS" /></label>
+          <label id="t-wrap" hidden>Tissue<br /><select id="tissue">${[...new Set(lines.lines.map((l) => l.lineage).filter(Boolean))].sort().map((t) => `<option>${escapeHtml(t!)}</option>`).join('')}</select></label>
           <button type="submit">Compare</button></form>
         <div id="recipe-out" aria-live="polite"></div>` : ''}
         <h3>Every screen result for this gene</h3>
@@ -163,10 +170,20 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           ] : []),
         ],
       });
+      const by = document.getElementById('by') as HTMLSelectElement | null;
+      const syncForm = () => {
+        const kind = by!.value as GroupKind;
+        document.getElementById('y-wrap')!.hidden = !NEEDS_GENE.includes(kind);
+        document.getElementById('t-wrap')!.hidden = kind !== 'tissue';
+      };
+      by?.addEventListener('change', syncForm);
       document.getElementById('recipe')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        const y = (document.getElementById('y') as HTMLInputElement).value.trim();
-        compare(key, rows, y).catch((err) => { document.getElementById('recipe-out')!.textContent = `Could not compare: ${err}`; });
+        syncForm();
+        const kind = by!.value as GroupKind, y = (document.getElementById('y') as HTMLInputElement).value.trim();
+        const tissue = (document.getElementById('tissue') as HTMLSelectElement).value;
+        if (NEEDS_GENE.includes(kind) && !y) { document.getElementById('recipe-out')!.textContent = 'Enter a gene symbol.'; return; }
+        compare(key, rows, kind, y, tissue).catch((err) => { document.getElementById('recipe-out')!.textContent = `Could not compare: ${err}`; });
       });
     } catch (err) {
       out.innerHTML = `<p class="notice"><strong>Data not available.</strong> ${escapeHtml(String(err))}</p>`;

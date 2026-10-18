@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- M3 recipes 3 to 7, same approved method: the comparison on `/gene` can now split cell lines by a gene's mutation, by a gene being switched off (log2 TPM+1 below 1) against expressed (3 or above), by a gene losing copies against normal, by whole-genome doubling, or by tissue against all others (`src/scripts/grouping.ts`). Lines in neither group and flagged lines are left out.
 - Auto-merge workflow now creates the `needs-richard` label if it does not exist (it was silently missing on PR #28).
 - Autonomy: `auto-merge.yml` turns on GitHub auto-merge for `claude/*` and Dependabot patch/minor PRs unless they touch protected files or are marked `needs-richard`; rules in `docs/ops/autonomy.md`. Needs two settings changed by Richard (allow auto-merge; require `site` and `data-pipeline-tests`).
 - M3 recipe 2 (method approved by Richard 2026-10-11): on `/gene`, "Does it depend on a mutation?" compares the gene's essential-scale values between lines with and without a mutation in a second gene. One value per line (median of its screens), difference of medians with a seeded bootstrap 95% interval, two-sided Mann-Whitney test, at least 5 lines per group; flagged lines and lines without mutation calls are left out (`src/scripts/recipe.ts`). Independent SciPy reference test in CI; manual "Validate recipes" workflow checks known biology (KRAS, BRAF, PIK3CA, TP53, MDM2) on staging data. `lines.json` gains `mutation_calls`.
