@@ -1,0 +1,16 @@
+# Precomputed gene associations (redesign step 3, requested by Richard 2026-10-18: "precomputed statistical analysis which
+# reveal key associations"). Method approved by Richard 2026-10-18 ("sounds ok", with a plain-language method box on the page):
+# the biological-workflow comparison (docs: src/scripts/workflow.ts) run for every gene, plus Benjamini-Hochberg FDR.
+# Derived data: inherits the licences of its inputs (BioGRID ORCS MIT, DepMap 24Q4 and Cellosaurus CC BY 4.0).
+id: associations
+inputs:
+  screens: https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/biogrid-orcs/0.1.0-staging/site
+  context: https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/cell-line-context/0.1.0-staging/site/ctx
+method:
+  value_per_line: median of the line's screens on the essential-gene scale (effect_scaled; 0 non-essential, -1 core-essential)
+  effect: median of group A minus median of group B
+  test: two-sided Mann-Whitney U, normal approximation with tie and continuity correction
+  min_lines_per_group: 5
+  multiple_testing: Benjamini-Hochberg false discovery rate over all genes tested for one question
+  flagged_lines: left out (misidentified or contaminated per Cellosaurus)
+  questions: each tissue against all other tissues; each driver-panel gene mutated against wild-type
