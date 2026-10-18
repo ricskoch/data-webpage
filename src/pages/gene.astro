@@ -254,7 +254,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     if (!p) return;
     pw = p;
     document.getElementById('pathway-box')!.hidden = false;
-    document.getElementById('pw-credit')!.innerHTML = `<small>Pathway data: Reactome release ${escapeHtml(p.release)} (<a href="https://reactome.org/license">licence</a>).</small>`;
+    document.getElementById('pw-credit')!.innerHTML = `<small>Pathway data: <a href="https://reactome.org">Reactome</a> release ${escapeHtml(p.release)}, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small>`;
   });
   getJSON<Record<string, [string, number]>>('genes.json').then((g) => { genes ??= g; }).catch(() => { /* lookup() reports the load error */ });
   document.getElementById('form')!.addEventListener('submit', (e) => { e.preventDefault(); go(input.value.trim()); });

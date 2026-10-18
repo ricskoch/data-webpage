@@ -1,4 +1,4 @@
-// Reactome pathways (CC0 1.0 / CC BY 4.0, to be confirmed from the build report): which genes belong to which pathway.
+// Reactome pathways (CC BY 4.0, confirmed by Richard 2026-10-18): which genes belong to which pathway.
 // Built by datasets/pathways/build.py. Optional: the gene page works unchanged when the file is not published.
 export const PATHWAY_URL = 'https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/pathways/0.1.0-staging/site/pathways.json';
 
