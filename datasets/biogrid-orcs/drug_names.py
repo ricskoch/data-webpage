@@ -6,6 +6,7 @@ splits a label into a genetic background and drug components, and looks each com
 PubChem matches is reported "review" (the first CID is kept as a suggestion); ChEMBL is accepted only on an exact
 preferred-name match. The output is a draft for a person to review before it becomes `drugs.yaml`.
 """
+import concurrent.futures
 import re
 import urllib.parse
 
@@ -61,19 +62,24 @@ def resolve(name, fetch_json):
     return out
 
 
-def build_mapping(labels, fetch_json):
-    """{label: {background, components: [resolved...]}} for each distinct label; each distinct drug name is looked up once."""
-    cache = {}
-    mapping = {}
-    for label in sorted(set(labels)):
-        parts = split_label(label)
-        comps = []
-        for name in parts["components"]:
-            if name not in cache:
-                cache[name] = resolve(name, fetch_json)
-            comps.append(cache[name])
-        mapping[label] = {"background": parts["background"], "components": comps}
-    return mapping
+def build_mapping(labels, fetch_json, workers=1, progress=None):
+    """{label: {background, components: [resolved...]}} for each distinct label; each distinct drug name is looked up once.
+
+    workers > 1 looks names up in parallel (the caller's fetch_json must keep to the services' rate limits);
+    progress(done, total, name) is called after each name."""
+    parts = {label: split_label(label) for label in sorted(set(labels))}
+    names = sorted({n for p in parts.values() for n in p["components"]})
+    resolved = {}
+
+    def one(name):
+        return name, resolve(name, fetch_json)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for k, (name, r) in enumerate(pool.map(one, names), 1):
+            resolved[name] = r
+            if progress:
+                progress(k, len(names), name)
+    return {label: {"background": p["background"], "components": [resolved[n] for n in p["components"]]}
+            for label, p in parts.items()}
 
 
 def summary(mapping):

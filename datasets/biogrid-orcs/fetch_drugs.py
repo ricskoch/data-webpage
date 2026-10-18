@@ -6,6 +6,7 @@ Writes drugs.draft.yaml (for review, then commit as drugs.yaml) and drugs_report
 import json
 import pathlib
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -16,30 +17,44 @@ import yaml
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import drug_names  # noqa: E402
 
-DELAY = 0.25  # seconds between calls: well under PubChem's 5 requests per second
+GAP = 0.25  # seconds between any two calls (all threads together): 4 per second, under PubChem's limit of 5
+WORKERS = 4
+_gate = threading.Lock()
+_next = [0.0]
+errors = []
+
+
+def _wait_turn():
+    with _gate:
+        now = time.monotonic()
+        wait = _next[0] - now
+        _next[0] = max(now, _next[0]) + GAP
+    if wait > 0:
+        time.sleep(wait)
 
 
 def fetch_json(url, tries=3):
-    """JSON from url; None when the service says not found (404). Other errors are retried, then raised."""
+    """JSON from url; None when the service has no answer (4xx) or keeps failing (the error is recorded for the report)."""
     for k in range(tries):
+        _wait_turn()
         try:
-            time.sleep(DELAY)
             req = urllib.request.Request(url, headers={"User-Agent": "data-webpage-drug-lookup (hobby project)"})
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=15) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
-            if e.code == 404:
+            if 400 <= e.code < 500 and e.code != 429:
                 return None
-            if k == tries - 1:
-                raise
-        except (urllib.error.URLError, TimeoutError):
-            if k == tries - 1:
-                raise
+            err = f"HTTP {e.code}"
+        except (urllib.error.URLError, TimeoutError, ValueError) as e:
+            err = type(e).__name__
         time.sleep(2 ** k)
+    errors.append(f"{err}: {url}")
+    return None
 
 
 def report(mapping, counts):
-    lines = ["# Drug identifier draft", "", f"Labels: {len(mapping)}  " + ", ".join(f"{k} {v}" for k, v in counts.items()), "",
+    lines = ["# Drug identifier draft", "", f"Labels: {len(mapping)}  " + ", ".join(f"{k} {v}" for k, v in counts.items()),
+             f"Calls that failed after retries (treated as no answer): {len(errors)}", *[f"- {e}" for e in errors[:20]], "",
              "## Needs a person (unmapped or several PubChem matches)", ""]
     for label, e in mapping.items():
         for c in e["components"]:
@@ -53,7 +68,12 @@ def main(work):
     out.mkdir(parents=True, exist_ok=True)
     cond = pd.read_parquet(pathlib.Path(work) / "out" / "conditions.parquet")
     labels = cond["agent_label"].dropna().unique().tolist()
-    mapping = drug_names.build_mapping(labels, fetch_json)
+    start = time.monotonic()
+
+    def progress(done, total, name):
+        if done % 20 == 0 or done == total:
+            print(f"{done}/{total} drug names ({time.monotonic() - start:.0f}s), last: {name}", flush=True)
+    mapping = drug_names.build_mapping(labels, fetch_json, workers=WORKERS, progress=progress)
     counts = drug_names.summary(mapping)
     (out / "drugs.draft.yaml").write_text(yaml.safe_dump(
         {"source": "PubChem PUG REST (public domain), ChEMBL API (CC BY-SA 3.0, IDs only)", "labels": mapping},
