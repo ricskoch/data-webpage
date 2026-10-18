@@ -45,6 +45,7 @@ import Base from '../layouts/Base.astro';
       const cache = new Map<string, Promise<Vector>>();
       const vec = (id: string) => { if (!cache.has(id)) cache.set(id, getJSON<Vector>(`s/${id.replace(/\D/g, '').padStart(4, '0')}.json`)); return cache.get(id)!; };
       let points: Point[] = [];
+      const query = () => $<HTMLInputElement>('gene').value.trim().toUpperCase();
 
       const fillScreens = () => {
         const ok = screens.filter((s) => s.treatment === $<HTMLSelectElement>('drug').value && s.has_z && pairs[s.screen_id]?.some(([c]) => byId.get(c)?.has_z));
@@ -89,7 +90,7 @@ import Base from '../layouts/Base.astro';
         const ds = byId.get(sid)!, cs = byId.get(cid)!, m = pairs[sid].find(([x]) => x === cid)![1];
         $('match').innerHTML = `<strong>Match:</strong> ${escapeHtml(MATCH_TEXT[m])}.`;
         $('stats').textContent = `${points.length.toLocaleString('en')} genes in both screens. Drug score: ${ds.primary_score_name ?? 'primary score'}. ` +
-          `No-drug score: ${cs.primary_score_name ?? 'primary score'}.` + ($('gene').value.trim() && !points.some((p) => perts[p[2]]?.toUpperCase() === $<HTMLInputElement>('gene').value.trim().toUpperCase()) ? ' Gene not in both screens.' : '');
+          `No-drug score: ${cs.primary_score_name ?? 'primary score'}.` + (query() && !points.some((p) => perts[p[2]]?.toUpperCase() === query()) ? ' Gene not in both screens.' : '');
         const rows = (p: Point[]) => p.map((r) => `<tr><td class="gene">${escapeHtml(perts[r[2]])}</td><td>${fmt(r[0])}</td><td>${fmt(r[1])}</td><td>${fmt(r[1] - r[0])}</td></tr>`).join('');
         const table = (title: string, p: Point[]) => `<h3>${title}</h3><div class="table-box" tabindex="0" role="region" aria-label="${title}"><table><thead><tr><th>Gene</th><th>No drug</th><th>Drug</th><th>Difference</th></tr></thead><tbody>${rows(p)}</tbody></table></div>`;
         $('tops').innerHTML = table('Lowest drug score relative to no drug', topDifferences(points, -1)) + table('Highest drug score relative to no drug', topDifferences(points, 1));
