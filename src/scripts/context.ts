@@ -8,6 +8,8 @@ export interface Line {
   age?: string | null; primary_or_metastasis?: string | null;
   ploidy?: number | null; wgd?: number | null; msi_score?: number | null; aneuploidy?: number | null;
   drivers: string[];
+  /** Panel genes with a loss-of-function / hotspot (gain-of-function-like) mutation; absent in files built before the split. */
+  drivers_lof?: string[]; drivers_gof?: string[];
   /** False when DepMap has no mutation calls for the line (absent in files built before this field existed). */
   mutation_calls?: boolean;
 }

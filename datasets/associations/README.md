@@ -13,6 +13,11 @@ Method approved by Richard on 2026-10-18; a short version of the text below is s
 4. Benjamini-Hochberg false discovery rate (q) across all genes tested for one question. The questions are not
    corrected against each other, so a result is a lead to follow up, not a finding.
 5. Lines flagged as misidentified or contaminated are left out; for mutation questions so are lines without mutation calls.
+6. Loss and gain of function (Richard, 2026-10-18, first on the driver panel): per panel gene two more questions, `mutlof:GENE`
+   (DepMap `LikelyLoF` mutation) and `mutgof:GENE` (DepMap `Hotspot` mutation that is not `LikelyLoF`; a stand-in for gain
+   of function). Group B is wild-type lines (no protein-altering mutation in the gene); lines of the other class, with both
+   classes or with a passenger missense are in neither group. Needs `drivers_lof` / `drivers_gof` in `lines.json`
+   (cell line context built with this change). Known-biology checks added: KRAS hotspot lines need KRAS, MDM2 in TP53 loss lines.
 
 No bootstrap interval here (it would be 4000 resamples for every one of about a million tests); the `/gene` page gives the
 interval for any single question.

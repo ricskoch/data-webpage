@@ -33,6 +33,8 @@ KNOWN = [
     ("mut:BRAF", "BRAF", -1, "BRAF-mutant lines need BRAF"),
     ("mut:PIK3CA", "PIK3CA", -1, "PIK3CA-mutant lines need PIK3CA"),
     ("mut:TP53", "MDM2", 1, "MDM2 matters only while TP53 works"),
+    ("mutgof:KRAS", "KRAS", -1, "KRAS hotspot lines need KRAS"),
+    ("mutlof:TP53", "MDM2", 1, "MDM2 matters only while TP53 works (loss-of-function TP53)"),
 ]
 
 
@@ -115,6 +117,18 @@ def questions(lines, min_lines=MIN_LINES):
         a = calls & np.array([i in mutated[g] for i in range(len(lines))])
         if a.sum() >= min_lines and (calls & ~a).sum() >= min_lines:
             out.append((f"mut:{g}", f"{g}-mutant vs wild-type lines", f"{g}-mutant", "wild-type", a, calls))
+    # Loss of function (DepMap LikelyLoF) and gain of function (hotspot that is not loss of function), each against
+    # lines with no protein-altering mutation in the gene. Lines with the other class, both classes or a passenger
+    # missense are in neither group. Needs the class lists of the context build (absent in older files).
+    if any("drivers_lof" in l for l in lines):
+        for kind, key, noun in (("mutlof", "drivers_lof", "loss-of-function"), ("mutgof", "drivers_gof", "hotspot")):
+            other = "drivers_gof" if key == "drivers_lof" else "drivers_lof"
+            for g in sorted(mutated):
+                own = np.array([g in (l.get(key) or []) and g not in (l.get(other) or []) for l in lines])
+                wild = np.array([i not in mutated[g] for i in range(len(lines))])
+                a, inc = calls & own, calls & (own | wild)
+                if a.sum() >= min_lines and (inc & ~a).sum() >= min_lines:
+                    out.append((f"{kind}:{g}", f"{g} {noun} mutation vs wild-type lines", f"{g} {noun}", "wild-type", a, inc))
     return out
 
 

@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 ---
-<Base wide title="Associations · CRISPR Screen Explorer" description="Precomputed: which genes matter more or less in a tissue or in lines with a given driver mutation.">
+<Base wide title="Associations · CRISPR Screen Explorer" description="Precomputed: which genes matter more or less in a tissue or in lines with a given driver mutation (any, loss of function or hotspot).">
   <h1>Associations</h1>
   <p class="notice"><strong>Prototype.</strong> Computed once for every gene; not yet reviewed by a bioinformatician. A lead to
     follow up in the <a href="/gene">gene explorer</a>, not a finding. <a href="#method">How these numbers were made</a>.</p>
@@ -43,6 +43,11 @@ import Base from '../layouts/Base.astro';
             genes called at that level. "q at most 0.05" means about one call in twenty may be wrong.</li>
           <li><strong>Left out.</strong> Cell lines flagged as misidentified or contaminated; for mutation questions also lines without mutation calls.</li>
         </ol>
+        <p><strong>Loss and gain of function.</strong> Besides "any mutation", each panel gene is asked twice, using DepMap's flags: <em>loss of
+          function</em> (truncating or otherwise likely to switch the gene off) and <em>hotspot</em> (a recurrent missense change such as KRAS G12D,
+          our stand-in for gain of function; for a tumour suppressor like TP53 a hotspot can also act by blocking the normal copy). Each class
+          is compared with lines that have no protein-altering mutation in that gene. Lines with the other class, with both, or with a one-off
+          missense change are left out of that question.</p>
         <p><strong>Limits.</strong> Tissue and mutation are tangled (KRAS mutations are common in lung and bowel), so a tissue effect can show
           up as a mutation effect and the other way round. The questions are corrected one at a time, not against each other. Many screens
           come from DepMap's own studies, which also produced the mutation data. Treat a hit as a lead to check.
