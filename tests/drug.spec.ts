@@ -38,7 +38,7 @@ const vectors: Record<string, unknown> = {
 
 async function fakeData(page: Page) {
   await page.route('**/site/**', (route) => {
-    const u = route.request().url();
+    const u = new URL(route.request().url()).pathname;
     const m = u.match(/\/s\/(\d{4})\.json$/);
     const body = u.endsWith('screens.json') ? screens : u.endsWith('drug_pairs.json') ? { '1': [['2', 'same_cell_line']] }
       : u.endsWith('perts.json') ? perts : m ? vectors[m[1]] : null;

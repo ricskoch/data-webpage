@@ -1,5 +1,6 @@
 // Cell line context (M3b): who each screened line is, plus per-gene expression, copy number and mutations.
 // Source: DepMap Public 24Q4 and Cellosaurus (both CC BY 4.0), built by datasets/cell-line-context/build.py.
+import { versioned } from './version';
 export const CTX_URL = 'https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/cell-line-context/0.1.0-staging/site/ctx';
 
 export interface Line {
@@ -41,7 +42,7 @@ export function expressionLabel(v: number | null): string | null {
 }
 
 export async function getCtx<T>(path: string): Promise<T> {
-  const res = await fetch(`${CTX_URL}/${path}`);
+  const res = await fetch(versioned(`${CTX_URL}/${path}`));
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.json() as Promise<T>;
 }

@@ -19,3 +19,9 @@ test('overChance divides the shared strongest genes by the number expected by ch
   expect(overChance(pair('A', 'HeLa', 0.5, 30, 2))).toBe(15);
   expect(overChance(pair('A', 'HeLa', 0.5, 30, 0))).toBe(0);
 });
+
+test('versioned adds the build id to a data URL so a new deploy skips cached copies', async () => {
+  const { versioned } = await import('../src/scripts/version');
+  expect(versioned('https://x.test/a.json')).toBe('https://x.test/a.json?v=dev');
+  expect(versioned('https://x.test/a.json?q=1')).toBe('https://x.test/a.json?q=1&v=dev');
+});

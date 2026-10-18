@@ -1,5 +1,6 @@
 // Precomputed associations (redesign step 3, F23): which genes differ in dependency between two groups of cell lines.
 // Built by datasets/associations/build.py; the method is described on the page and in datasets/associations/README.md.
+import { versioned } from './version';
 export const ASSOC_URL = 'https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/associations/0.1.0-staging/site/assoc';
 
 export interface Question { id: string; label: string; a: string; b: string; file: string; lines_a: number; lines_b: number; tested: number; significant: number }
@@ -11,7 +12,7 @@ export type Call = 'more' | 'less' | 'ns';
 export interface Hit { gene: string; d: number; p: number | null; q: number; na: number; nb: number; call: Call }
 
 export async function getAssoc<T>(path: string): Promise<T> {
-  const res = await fetch(`${ASSOC_URL}/${path}`);
+  const res = await fetch(versioned(`${ASSOC_URL}/${path}`));
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.json() as Promise<T>;
 }

@@ -1,5 +1,6 @@
 // Reproducibility of repeated drug screens (F20): how well two screens of the same drug in the same cell line agree.
 // Built by datasets/reproducibility/reproducibility.py (method chosen by Richard 2026-10-18, see its README).
+import { versioned } from './version';
 export const REPRO_URL = 'https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/reproducibility/0.1.0-staging/site/repro';
 
 /** [drug, cell line, screen index a, screen index b, shared genes, rho, overlap of the 200 strongest genes, expected overlap by chance, same study 0/1] */
@@ -7,7 +8,7 @@ export type Pair = [string, string, number, number, number, number, number, numb
 export interface Repro { top: number; min_shared: number; pairs: Pair[] }
 
 export async function getRepro(): Promise<Repro> {
-  const res = await fetch(`${REPRO_URL}/pairs.json`);
+  const res = await fetch(versioned(`${REPRO_URL}/pairs.json`));
   if (!res.ok) throw new Error(`pairs.json: HTTP ${res.status}`);
   return res.json() as Promise<Repro>;
 }
