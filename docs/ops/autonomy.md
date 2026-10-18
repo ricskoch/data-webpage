@@ -32,3 +32,6 @@ Auto-merge and the four required checks were switched on by Richard on 2026-10-1
 
 ## Settings that only Richard can change
 `allow_auto_merge` on the repository, and the required checks in the ruleset. Both are listed in the PR that introduced this file.
+
+## Adding an npm dependency from the cloud sandbox
+The sandbox Claude works in cannot reach the npm registry, so it cannot update `package-lock.json`. Claude edits `package.json`, opens the PR and adds the label `update-lockfile`; `.github/workflows/update-lockfile.yml` then regenerates the lockfile on a runner and commits it to the PR branch. That bot commit does not start the checks, so Claude pushes one more real commit afterwards. New runtime dependencies still tick the cost and permissions box and wait for Richard.
