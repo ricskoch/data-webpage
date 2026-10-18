@@ -111,6 +111,7 @@ test('/gene: the gene\'s own mutation, expression and copy number in each screen
   await expect(row.locator('td').nth(-2)).toHaveText('0.4 off');
   await expect(row.locator('td').nth(-1)).toHaveText('0.10 deep loss');
   await page.getByLabel('Compare lines with and without a mutation in').fill('tp53');
+  await page.getByLabel('Compare lines with and without a mutation in').press('Escape'); // dismiss the gene dropdown, which would cover the button
   await page.getByRole('button', { name: 'Compare' }).click();
   await expect(page.locator('#recipe-out')).toContainText('Not enough lines to compare');
   await expect(page.locator('#recipe-out')).toContainText('TP53-mutant lines: 1; TP53-wild-type lines: 1');

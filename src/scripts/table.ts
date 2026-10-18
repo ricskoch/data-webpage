@@ -115,13 +115,15 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): TableHandl
     }
     o.onView?.(hits, selected);
   };
-  const choose = (row: T | null) => {
+  const choose = (row: T | null, focus = false) => {
     selected = row;
     const i = row ? view.indexOf(row) : -1;
     if (i >= 0) page = Math.floor(i / size) + 1;
     o.onSelect?.(row);
     render();
-    if (i >= 0) root.querySelector<HTMLElement>('tr[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+    const tr = i >= 0 ? root.querySelector<HTMLElement>('tr[aria-current="true"]') : null;
+    if (focus) tr?.focus(); // the table body was redrawn, so keyboard users would otherwise lose their place
+    tr?.scrollIntoView({ block: 'nearest' });
   };
 
   root.addEventListener('change', (e) => {
@@ -138,10 +140,10 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): TableHandl
   root.addEventListener('keydown', (e) => {
     const tr = (e.target as HTMLElement).closest<HTMLElement>('tr[data-i]');
     if (!tr) return;
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(rowOf(tr)!); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(rowOf(tr)!, true); }
     else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       const next = e.key === 'ArrowDown' ? tr.nextElementSibling : tr.previousElementSibling;
-      if (next) { e.preventDefault(); choose(rowOf(next as HTMLElement)!); root.querySelector<HTMLElement>('tr[aria-current="true"]')?.focus(); }
+      if (next) { e.preventDefault(); choose(rowOf(next as HTMLElement)!, true); }
     }
   });
   document.addEventListener('keydown', (e) => {
@@ -154,7 +156,7 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): TableHandl
   root.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
     const row = o.detail && !target.closest('a, button') ? rowOf(target) : undefined;
-    if (row) { choose(row === selected ? null : row); return; }
+    if (row) { choose(row === selected ? null : row, true); return; }
     const b = target.closest('button');
     if (!b) return;
     if (b.dataset.sort) {
