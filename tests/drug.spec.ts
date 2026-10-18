@@ -60,3 +60,17 @@ test('/drug: pick a drug, see the match level, highlight a gene, read the top di
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });
+
+// The scatter is a Plotly chart: its traces tell how many genes are coloured and which gene is ringed.
+const traces = (page: Page) => page.evaluate(() => Object.fromEntries(((document.getElementById('plot') as any)?.data ?? []).map((t: any) => [t.name, t.x.length])));
+
+test('/drug: genes whose drug score differs by the chosen gap are coloured; a click on a dot highlights its gene', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/drug');
+  await expect.poll(() => traces(page)).toEqual({ 'within the gap': 2, 'lower with drug (by 3 or more)': 1, 'higher with drug (by 3 or more)': 0 });
+  await page.getByLabel('Colour genes whose drug score differs by at least').selectOption('0');
+  await expect.poll(() => traces(page)).toEqual({ genes: 3 });
+  await page.evaluate(() => (document.getElementById('plot') as any).emit('plotly_click', { points: [{ customdata: 'BRCA2' }] }));
+  await expect(page.getByLabel('Highlight gene')).toHaveValue('BRCA2');
+  await expect.poll(() => traces(page)).toEqual({ genes: 3, BRCA2: 1 });
+});
