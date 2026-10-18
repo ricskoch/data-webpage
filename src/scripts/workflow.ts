@@ -1,4 +1,4 @@
-// Recipe 2 of the M3 plan: "Is gene X a dependency only when gene Y is mutated?"
+// Biological workflow 2 of the M3 plan: "Is gene X a dependency only when gene Y is mutated?"
 // Method approved by Richard on 2026-10-11:
 // - one value per cell line: the median of that line's screens on the essential-gene scale (0 = non-essential,
 //   -1 = core-essential), so a line screened ten times counts once;
@@ -8,7 +8,7 @@
 //   mannwhitneyu with method="asymptotic");
 // - at least MIN_LINES lines per group, otherwise the question is reported as not testable.
 // No imports, so node can run this file directly for the independent SciPy reference test
-// (tests/reference/test_recipe_reference.py) and the known-biology check (scripts/validate-recipe.mjs).
+// (tests/reference/test_workflow_reference.py) and the known-biology check (tests/reference/validate_recipe_live.mjs).
 
 export const MIN_LINES = 5;
 export const RESAMPLES = 4000;
@@ -92,10 +92,10 @@ export function dependencyByMutation(perScreen: { line: number; value: number }[
   return { mutant: mut, wildtype: wt, testable: true, diff, ci: bootstrapDiff(a, b), u, p };
 }
 
-/** Plain-language reading, based on whether the 95% interval excludes zero. */
-export function verdict(c: Comparison, x: string, y: string): string {
-  if (!c.testable) return `Not enough lines to compare (needs at least ${MIN_LINES} ${y}-mutant and ${MIN_LINES} ${y}-wild-type lines).`;
-  if (c.ci![0] > 0) return `Knocking out ${x} hurts ${y}-mutant lines less (or helps them more) than wild-type lines.`;
-  if (c.ci![1] < 0) return `Knocking out ${x} hurts ${y}-mutant lines more (or helps them less) than wild-type lines.`;
-  return `No clear difference: ${x} behaves about the same whether or not ${y} is mutated.`;
+/** Plain-language reading, based on whether the 95% interval excludes zero. `names` labels the two groups. */
+export function verdict(c: Comparison, x: string, y: string, names = { a: `${y}-mutant`, b: 'wild-type' }): string {
+  if (!c.testable) return `Not enough lines to compare (needs at least ${MIN_LINES} ${names.a} and ${MIN_LINES} ${names.b} lines).`;
+  if (c.ci![0] > 0) return `Knocking out ${x} hurts ${names.a} lines less (or helps them more) than ${names.b} lines.`;
+  if (c.ci![1] < 0) return `Knocking out ${x} hurts ${names.a} lines more (or helps them less) than ${names.b} lines.`;
+  return `No clear difference: ${x} behaves about the same in ${names.a} and ${names.b} lines.`;
 }

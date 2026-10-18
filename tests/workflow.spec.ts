@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { median, mannWhitney, bootstrapDiff, dependencyByMutation, verdict, MIN_LINES } from '../src/scripts/recipe';
+import { median, mannWhitney, bootstrapDiff, dependencyByMutation, verdict, MIN_LINES } from '../src/scripts/workflow';
 
-// Pure-logic tests for recipe 2 ("dependency by mutation"). The independent SciPy comparison lives in
-// tests/reference/test_recipe_reference.py; these pin the hand-checkable cases.
+// Pure-logic tests for biological workflow 2 ("dependency by mutation"). The independent SciPy comparison lives in
+// tests/reference/test_workflow_reference.py; these pin the hand-checkable cases.
 test('median: odd, even, empty', () => {
   expect(median([3, 1, 2])).toBe(2);
   expect(median([4, 1, 3, 2])).toBe(2.5);
