@@ -13,6 +13,10 @@ import urllib.parse
 PUBCHEM = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound"
 CHEMBL = "https://www.ebi.ac.uk/chembl/api/data/molecule/search.json"
 BACKGROUND = re.compile(r"^(mutation|knockout|knock-out|ko|deletion|overexpression)\s*:", re.I)
+# Conditions that are organisms or cells, not compounds: not looked up, reported as "not_a_compound".
+NOT_COMPOUND = re.compile(r"\b(virus|viral|bacteri\w*|phage|t3ss\w*|[a-z]+ cells?)\b|^virus\s*:", re.I)
+DOSE_LIKE = re.compile(r"^[\d.,\s]*\d\s*[a-zµ]*(/[a-z]+)?$", re.I)
+PARENS = re.compile(r"\(([^()]*)\)")
 
 
 def norm(s):
@@ -52,13 +56,34 @@ def chembl_exact(name, fetch_json):
     return None
 
 
+def candidates(name):
+    """Spellings to try, best first: the name without brackets, then each bracketed alias that is not a dose, then as written."""
+    bare = norm(PARENS.sub("", name))
+    aliases = [norm(a) for a in PARENS.findall(name) if norm(a) and not DOSE_LIKE.match(norm(a))]
+    seen, out = set(), []
+    for c in [bare, *aliases, name]:
+        if c and c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
 def resolve(name, fetch_json):
-    cids = pubchem_cids(name, fetch_json)
-    out = {"name": name, "status": "unmapped", "pubchem_cid": None, "pubchem_title": None, "chembl_id": None}
-    if cids:
-        out.update(status="mapped" if len(cids) == 1 else "review", pubchem_cid=cids[0],
-                   pubchem_title=pubchem_title(cids[0], fetch_json))
-    out["chembl_id"] = chembl_exact(name, fetch_json)
+    out = {"name": name, "status": "unmapped", "pubchem_cid": None, "pubchem_title": None, "chembl_id": None,
+           "looked_up_as": None}
+    if NOT_COMPOUND.search(name):
+        out["status"] = "not_a_compound"
+        return out
+    for spelling in candidates(name):
+        cids = pubchem_cids(spelling, fetch_json)
+        if cids:
+            out.update(status="mapped" if len(cids) == 1 else "review", pubchem_cid=cids[0], looked_up_as=spelling,
+                       pubchem_title=pubchem_title(cids[0], fetch_json))
+            break
+    for spelling in candidates(name):
+        out["chembl_id"] = chembl_exact(spelling, fetch_json)
+        if out["chembl_id"]:
+            break
     return out
 
 
@@ -83,10 +108,16 @@ def build_mapping(labels, fetch_json, workers=1, progress=None):
 
 
 def summary(mapping):
-    """Counts of labels by their worst component status (no components = 'background_only')."""
+    """Counts of labels by their worst compound status (no components = 'background_only'; only organisms/cells = 'not_a_compound')."""
     order = ["unmapped", "review", "mapped"]
-    counts = {"mapped": 0, "review": 0, "unmapped": 0, "background_only": 0}
+    counts = {"mapped": 0, "review": 0, "unmapped": 0, "not_a_compound": 0, "background_only": 0}
     for entry in mapping.values():
         states = {c["status"] for c in entry["components"]}
-        counts["background_only" if not states else next(s for s in order if s in states)] += 1
+        compounds = states - {"not_a_compound"}
+        if not states:
+            counts["background_only"] += 1
+        elif not compounds:
+            counts["not_a_compound"] += 1
+        else:
+            counts[next(s for s in order if s in compounds)] += 1
     return counts

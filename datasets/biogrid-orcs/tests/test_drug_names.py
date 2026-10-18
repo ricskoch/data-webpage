@@ -61,7 +61,7 @@ class DrugNames(unittest.TestCase):
         m = drug_names.build_mapping(["Olaparib", "Mutation: BRCA2 KO | Olaparib", "Olaparib + Weird", "Mutation: TP53 KO"],
                                      counting)
         self.assertEqual(len([u for u in calls if "name/Olaparib/cids" in u]), 1)
-        self.assertEqual(drug_names.summary(m), {"mapped": 2, "review": 1, "unmapped": 0, "background_only": 1})
+        self.assertEqual(drug_names.summary(m), {"mapped": 2, "review": 1, "unmapped": 0, "not_a_compound": 0, "background_only": 1})
 
     def test_parallel_lookup_gives_the_same_mapping_and_reports_progress(self):
         labels = ["Olaparib", "Mutation: BRCA2 KO | Olaparib", "Olaparib + A159"]
@@ -70,6 +70,24 @@ class DrugNames(unittest.TestCase):
         par = drug_names.build_mapping(labels, fake(OLAPARIB), workers=4, progress=lambda d, n, name: seen.append((d, n)))
         self.assertEqual(par, serial)
         self.assertEqual(seen, [(1, 2), (2, 2)])
+
+    def test_bracketed_alias_and_dose_are_handled(self):
+        self.assertEqual(drug_names.candidates("GSK461364 (GSK461364A)"), ["GSK461364", "GSK461364A", "GSK461364 (GSK461364A)"])
+        self.assertEqual(drug_names.candidates("THZ-1(50nmol/L)")[0], "THZ-1")
+        self.assertNotIn("50nmol/L", drug_names.candidates("THZ-1(50nmol/L)"))
+
+    def test_alias_is_used_when_the_main_name_has_no_match(self):
+        f = fake({"name/KU-57788/cids": {"IdentifierList": {"CID": [9]}}})
+        r = drug_names.resolve("NU 7441 (KU-57788)", f)
+        self.assertEqual((r["status"], r["pubchem_cid"], r["looked_up_as"]), ("mapped", 9, "KU-57788"))
+
+    def test_organisms_and_cells_are_not_looked_up(self):
+        calls = []
+        r = drug_names.resolve("Virus: Human hepatitis A virus HM175", lambda url: calls.append(url))
+        self.assertEqual((r["status"], calls), ("not_a_compound", []))
+        self.assertEqual(drug_names.resolve("V. parahaemolyticus with active T3SS1", lambda u: None)["status"], "not_a_compound")
+        m = {"Virus: X": {"background": [], "components": [{"status": "not_a_compound"}]}}
+        self.assertEqual(drug_names.summary(m)["not_a_compound"], 1)
 
 
 if __name__ == "__main__":
