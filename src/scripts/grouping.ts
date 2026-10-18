@@ -3,7 +3,7 @@
 // Lines in neither group, and lines Cellosaurus flags as misidentified or contaminated, are left out.
 import { copyLabel, type GeneContext, type Lines } from './context.ts';
 
-export type GroupKind = 'mutation' | 'expression' | 'copy' | 'gain' | 'wgd' | 'tissue';
+export type GroupKind = 'mutation' | 'expression' | 'copy' | 'deeploss' | 'gain' | 'wgd' | 'tissue';
 export interface Grouping { group: Set<number>; include: (line: number) => boolean; a: string; b: string }
 
 /** Expression bands match expressionLabel: off is log2(TPM+1) < 1, expressed is 3 or more (medium or high). */
@@ -11,10 +11,10 @@ export const OFF_BELOW = 1;
 export const EXPRESSED_FROM = 3;
 
 export const KIND_LABELS: Record<GroupKind, string> = {
-  mutation: 'a mutation in a gene', expression: 'a gene being switched off', copy: 'a gene losing copies', gain: 'a gene gaining copies',
+  mutation: 'a mutation in a gene', expression: 'a gene being switched off', copy: 'a gene losing copies', deeploss: 'a gene lost almost completely', gain: 'a gene gaining copies',
   wgd: 'whole-genome doubling', tissue: 'tissue',
 };
-export const NEEDS_GENE: GroupKind[] = ['mutation', 'expression', 'copy', 'gain'];
+export const NEEDS_GENE: GroupKind[] = ['mutation', 'expression', 'copy', 'deeploss', 'gain'];
 
 export function makeGrouping(kind: GroupKind, lines: Lines, y: string, yctx?: GeneContext, tissue?: string): Grouping {
   const all = lines.lines.map((_, i) => i);
@@ -33,6 +33,11 @@ export function makeGrouping(kind: GroupKind, lines: Lines, y: string, yctx?: Ge
       const c = (l: number) => copyLabel(yctx?.c[l] ?? null);
       const lost = (l: number) => c(l) === 'loss' || c(l) === 'deep loss';
       return { group: pick(lost), a: `${y}-loss`, b: `${y}-normal copy number`, include: (l) => fine(l) && (lost(l) || c(l) === 'normal') };
+    }
+    case 'deeploss': {
+      const c = (l: number) => copyLabel(yctx?.c[l] ?? null);
+      return { group: pick((l) => c(l) === 'deep loss'), a: `${y}-deep loss`, b: `${y}-normal copy number`,
+        include: (l) => fine(l) && (c(l) === 'deep loss' || c(l) === 'normal') };
     }
     case 'gain': {
       const c = (l: number) => copyLabel(yctx?.c[l] ?? null);

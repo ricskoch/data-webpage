@@ -1,0 +1,15 @@
+# What kind of thing is a screen's treatment label? Reviewed by a person; changes here are mapping changes.
+# Rules are tried in order on each part of a label (split on "|" and " + "). First match wins.
+# A label with no matching rule stays "unclassified" so gaps are visible, never guessed.
+categories:
+  untreated: no treatment named
+  drug_compound: a drug or chemical compound (identified on PubChem or ChEMBL)
+  genetic_background: a cell line mutation or knockout the screen was run in
+  condition_change: a change of growth conditions (oxygen, nutrients, temperature, serum)
+  culture_format: a different way of growing the cells (3D, organoid, attachment)
+  biological_agent: a virus, bacterium or other cells
+  unclassified: not yet sorted; listed in the lookup report
+rules:
+  - {category: biological_agent, pattern: '\b(virus|viral|bacteri\w*|phage|t3ss\w*|[a-z]+ cells?)\b'}
+  - {category: culture_format, pattern: '\b(3d|2d|spheroids?|organoids?|monolayer|suspension|adherent|ultra-?low attachment|matrigel|xenograft|in vivo|hanging drop|scaffold)\b'}
+  - {category: condition_change, pattern: '\b(hypox\w*|normox\w*|anox\w*|oxygen|starv\w*|withdrawal|deprivation|depletion of|glucose|glutamine|serum|nutrient\w*|medium|media|heat|cold|temperature|ph \d|acidic|osmotic|confluen\w*|passage|irradiat\w*|uv light|light)\b'}

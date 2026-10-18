@@ -56,6 +56,18 @@ class ExportSite(unittest.TestCase):
         with self.assertRaises(ValueError):
             export_site.add_treatment(screens, cond)
 
+    def test_treatment_category(self):
+        screens = pd.DataFrame({"screen_id": ["1", "2", "3", "4"],
+                                "experimental_setup": ["Drug Exposure", "Drug Exposure", "Timecourse", "Timecourse"],
+                                "treatment": ["Olaparib", "3D spheroid growth", "Hypoxia", None]})
+        out = export_site.add_treatment_category(screens)
+        self.assertEqual(out["treatment_category"].tolist(),
+                         ["drug_compound", "culture_format", "condition_change", "untreated"])
+
+    def test_non_drug_screen_with_unknown_name_stays_unclassified(self):
+        screens = pd.DataFrame({"screen_id": ["1"], "experimental_setup": ["Timecourse"], "treatment": ["Zorbex"]})
+        self.assertEqual(export_site.add_treatment_category(screens)["treatment_category"].tolist(), ["unclassified"])
+
     def test_drug_pairs_keep_rank_order_and_unmatched_screens(self):
         c = pd.DataFrame({"screen_id": ["d1", "d1", "d2"], "control_screen_id": ["c2", "c1", None],
                           "match": ["same_study_library", "same_cell_line", "none"], "rank": [1, 2, None]})
