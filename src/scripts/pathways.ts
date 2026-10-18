@@ -1,5 +1,6 @@
 // Reactome pathways (CC BY 4.0, confirmed by Richard 2026-10-18): which genes belong to which pathway.
 // Built by datasets/pathways/build.py. Optional: the gene page works unchanged when the file is not published.
+import { versioned } from './version';
 export const PATHWAY_URL = 'https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/pathways/0.1.0-staging/site/pathways.json';
 
 export interface Pathway { id: string; name: string; genes: string[] }
@@ -7,7 +8,7 @@ export interface Pathways { release: string; pathways: Pathway[] }
 
 export async function loadPathways(): Promise<Pathways | null> {
   try {
-    const res = await fetch(PATHWAY_URL);
+    const res = await fetch(versioned(PATHWAY_URL));
     return res.ok ? ((await res.json()) as Pathways) : null;
   } catch {
     return null;

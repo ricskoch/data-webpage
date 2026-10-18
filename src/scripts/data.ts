@@ -1,4 +1,5 @@
 // Prototype data source: the R2 staging bucket (not a data release; see docs/learning/M2b-pipeline.md).
+import { versioned } from './version';
 export const DATA_URL = 'https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/biogrid-orcs/0.1.0-staging/site';
 
 export interface Screen {
@@ -23,7 +24,7 @@ export function treatmentLabel(s: Screen): string | null {
 export type GeneRow = [number, number | null, number | null, number | null, number, number | null];
 
 export async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${DATA_URL}/${path}`);
+  const res = await fetch(versioned(`${DATA_URL}/${path}`));
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.json() as Promise<T>;
 }

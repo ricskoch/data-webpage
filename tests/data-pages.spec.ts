@@ -18,7 +18,7 @@ const geneRows = screens.map((_, i) => [i, i / 59, -i / 59, -i / 10, i % 7 ? 0 :
 
 async function fakeData(page: Page) {
   await page.route('**/site/**', (route) => {
-    const u = route.request().url();
+    const u = new URL(route.request().url()).pathname;
     const body = u.endsWith('summary.json') ? summary : u.endsWith('screens.json') ? screens
       : u.endsWith('genes.json') ? { TP53: ['g1', 0] } : u.endsWith('/g/0000.json') ? { g1: geneRows } : null;
     return body ? route.fulfill({ json: body }) : route.fulfill({ status: 404 });
@@ -78,7 +78,7 @@ const ctxLines = {
 };
 async function fakeContext(page: Page) {
   await page.route('**/ctx/**', (route) => {
-    const u = route.request().url();
+    const u = new URL(route.request().url()).pathname;
     const body = u.endsWith('lines.json') ? ctxLines
       : u.endsWith('/g/0000.json') ? { g1: { e: [6.5, 0.4], c: [1.0, 0.1], m: [[1, 'p.Q136fs', 1, 0]] } } : null;
     return body ? route.fulfill({ json: body }) : route.fulfill({ status: 404 });
@@ -211,7 +211,7 @@ test('/gene: precomputed associations of the gene can be run as a workflow', asy
   await fakeData(page);
   await fakeContext(page);
   await page.route('**/associations/**', (route) => {
-    const u = route.request().url();
+    const u = new URL(route.request().url()).pathname;
     const body = u.endsWith('index.json') ? { release: 't', min_lines: 5, fdr: 0.05, genes: ['TP53'],
       questions: [{ id: 'mut:TP53', label: 'TP53-mutant vs wild-type lines', a: 'TP53-mutant', b: 'wild-type', file: 'f/000.json', lines_a: 1, lines_b: 1, tested: 1, significant: 1 }] }
       : u.endsWith('by_gene.json') ? { questions: ['mut:TP53'], fdr: 0.05, min_effect: 0.2, genes: { 0: [[0, -0.5, 1e-5]] } } : null;
@@ -248,7 +248,7 @@ test('/data: kinds of treatment and drug coverage', async ({ page }) => {
 test('/data: reproducibility of repeated drug screens', async ({ page }) => {
   await fakeData(page);
   const pairs = [['Olaparib', 'HeLa', 0, 10, 5000, 0.62, 40, 2, 1], ['Olaparib', 'HeLa', 0, 20, 5000, 0.1, 5, 2, 0]];
-  await page.route('**/repro/pairs.json', (route) => route.fulfill({ json: { top: 200, min_shared: 2000, pairs } }));
+  await page.route('**/repro/pairs.json*', (route) => route.fulfill({ json: { top: 200, min_shared: 2000, pairs } }));
   await page.goto('/data');
   await expect(page.locator('#repro .stats li').first()).toContainText('2');
   await expect(page.locator('#repro tbody tr').first()).toContainText('agree well');

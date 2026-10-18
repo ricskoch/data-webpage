@@ -10,7 +10,7 @@ const lung = { ...kras, d: [-0.6, -0.1, 0.3, 0.5] };
 
 async function fakeAssoc(page: Page) {
   await page.route('**/associations/**', (route) => {
-    const u = route.request().url();
+    const u = new URL(route.request().url()).pathname;
     const body = u.endsWith('index.json') ? index : u.endsWith('000.json') ? lung : u.endsWith('001.json') ? kras : null;
     return body ? route.fulfill({ json: body }) : route.fulfill({ status: 404 });
   });
