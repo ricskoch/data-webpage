@@ -240,6 +240,9 @@ test('/data: kinds of treatment and drug coverage', async ({ page }) => {
   // 6 Olaparib screens: 4 in HeLa (0, 10, 20, 30), 2 in K562 (40, 50)
   const z = () => page.evaluate(() => (document.getElementById('c-cov') as any)?.data?.[0]?.z);
   await expect.poll(z).toEqual([[4, 2]]);
+  // all cell lines are shown by default; the selects only narrow the view
+  await expect(page.locator('#cov-note')).toContainText('Showing 1 drugs and 2 cell lines');
+  await expect(page.locator('#cov-lines option')).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => (document.getElementById('c-kind') as any)?.data?.[0]?.y ?? (document.getElementById('c-kind') as any)?.data?.[0]?.x)).toBeTruthy();
   await page.getByLabel('Kind of treatment', { exact: true }).selectOption('drug_compound');
   await expect(page.locator('#screens [data-count]')).toHaveText('6 of 60 screens match.');
