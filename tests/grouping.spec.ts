@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { makeGrouping } from '../src/scripts/grouping';
 import type { GeneContext, Lines } from '../src/scripts/context';
 
-// Pure-logic tests for the ways lines are split into two groups (recipe 2, other splits).
+// Pure-logic tests for the ways lines are split into two groups (biological workflow 2, other splits).
 const line = (o: object) => ({ cellosaurus_id: 'CVCL_x', name: 'x', depmap_id: 'ACH-1', screens: 1, problematic: false, drivers: [], ...o });
 const lines: Lines = {
   release: 'test', screen_line: {},

@@ -1,4 +1,4 @@
-// Ways to split cell lines into two groups for the recipe in recipe.ts (the method is the same for every split,
+// Ways to split cell lines into two groups for the biological workflow in workflow.ts (the method is the same for every split,
 // as approved on 2026-10-11): by a gene's mutation, expression or copy number, by whole-genome doubling, or by tissue.
 // Lines in neither group, and lines Cellosaurus flags as misidentified or contaminated, are left out.
 import { copyLabel, type GeneContext, type Lines } from './context';

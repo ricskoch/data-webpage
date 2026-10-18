@@ -1,9 +1,9 @@
-// Known-biology check for recipe 2 on the published staging data (run by the "Validate recipes" workflow).
-// Each case is textbook biology; the recipe must reproduce its direction with a 95% interval that excludes 0.
+// Known-biology check for biological workflow 2 on the published staging data (run by the "Validate recipes" workflow).
+// Each case is textbook biology; the workflow must reproduce its direction with a 95% interval that excludes 0.
 // Needs node --experimental-strip-types and network access to the R2 bucket.
 import { DATA_URL } from '../../src/scripts/data.ts';
 import { CTX_URL } from '../../src/scripts/context.ts';
-import { dependencyByMutation, verdict } from '../../src/scripts/recipe.ts';
+import { dependencyByMutation, verdict } from '../../src/scripts/workflow.ts';
 
 const CASES = [ // [knocked-out gene X, mutated gene Y, expected sign of median(mutant) - median(wild-type), why]
   ['KRAS', 'KRAS', -1, 'oncogene addiction: KRAS-mutant lines need KRAS'],

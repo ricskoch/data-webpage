@@ -115,13 +115,13 @@ test('/gene: the gene\'s own mutation, expression and copy number in each screen
   await page.getByLabel('Gene', { exact: true }).fill('tp53');
   await page.getByLabel('Gene', { exact: true }).press('Escape'); // dismiss the gene dropdown, which would cover the button
   await page.getByRole('button', { name: 'Compare' }).click();
-  await expect(page.locator('#recipe-out')).toContainText('Not enough lines to compare');
-  await expect(page.locator('#recipe-out')).toContainText('TP53-mutant lines: 1; wild-type lines: 1');
+  await expect(page.locator('#workflow-out')).toContainText('Not enough lines to compare');
+  await expect(page.locator('#workflow-out')).toContainText('TP53-mutant lines: 1; wild-type lines: 1');
   await page.getByLabel('Compare lines by').selectOption('tissue');
   await expect(page.getByLabel('Gene', { exact: true })).toBeHidden();
   await page.locator('#tissue').selectOption('Myeloid');
   await page.getByRole('button', { name: 'Compare' }).click();
-  await expect(page.locator('#recipe-out')).toContainText('Myeloid lines: 1; all other tissues lines: 1');
+  await expect(page.locator('#workflow-out')).toContainText('Myeloid lines: 1; all other tissues lines: 1');
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });
