@@ -28,10 +28,10 @@ import Base from '../layouts/Base.astro';
       if (!drugs.length) { out.innerHTML = '<p>No drug screens with a usable no-drug screen are published yet.</p>'; return; }
       out.innerHTML = `
         <div class="lookup">
-          <label>Drug<br /><select id="drug">${drugs.map((d) => opt(d, d)).join('')}</select></label>
-          <label>Drug screen<br /><select id="screen"></select></label>
-          <label>No-drug screen<br /><select id="control"></select></label>
-          <label>Highlight gene<br /><input id="gene" autocomplete="off" placeholder="e.g. BRCA2" /></label>
+          <div><label for="drug">Drug</label><br /><select id="drug">${drugs.map((d) => opt(d, d)).join('')}</select></div>
+          <div><label for="screen">Drug screen</label><br /><select id="screen"></select></div>
+          <div><label for="control">No-drug screen</label><br /><select id="control"></select></div>
+          <div><label for="gene">Highlight gene</label><br /><input id="gene" autocomplete="off" placeholder="e.g. BRCA2" /></div>
         </div>
         <p id="match"></p>
         <canvas id="plot" width="640" height="640" role="img" aria-label="Scatter of gene scores without and with the drug" style="width:100%;max-width:640px;height:auto;border:1px solid var(--border);background:var(--surface)"></canvas>
