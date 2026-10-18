@@ -47,7 +47,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 <script>
   import { getJSON, getScreens, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
-  import { makeGrouping, KIND_LABELS, NEEDS_GENE, type GroupKind } from '../scripts/grouping';
+  import { makeGrouping, mutationClasses, KIND_LABELS, NEEDS_GENE, type GroupKind } from '../scripts/grouping';
   import { drugSummary } from '../scripts/drug';
   import { mountCombobox, suggest, exactSymbol } from '../scripts/combobox';
   import { draw, palette } from '../scripts/charts';
@@ -105,6 +105,39 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         yaxis: { type: 'category', autorange: 'reversed' } });
   }
 
+  /** Three groups for one gene (wild-type, loss of function, hotspot) and the Mann-Whitney test between each pair. */
+  async function compareClasses(x: string, y: string, perScreen: { line: number; value: number }[], yctx: NonNullable<Awaited<ReturnType<typeof loadGene>>>) {
+    const box = document.getElementById('workflow-out')!;
+    const cls = mutationClasses(lines!, yctx);
+    const pair = (a: Set<number>, b: Set<number>) => dependencyByMutation(perScreen, a, (l) => a.has(l) || b.has(l));
+    const lw = pair(cls.lof, cls.wild), hw = pair(cls.hot, cls.wild), hl = pair(cls.hot, cls.lof);
+    const groups = [
+      { name: `${y} wild-type`, values: lw.wildtype.map((v) => v.value) },
+      { name: `${y} loss of function`, values: lw.mutant.map((v) => v.value) },
+      { name: `${y} hotspot`, values: hw.mutant.map((v) => v.value) },
+    ];
+    const X = `<span class="gene">${escapeHtml(x)}</span>`;
+    const row = (what: string, c: Comparison) => `<tr><td>${escapeHtml(what)}</td><td class="num">${c.mutant.length} / ${c.wildtype.length}</td>
+      <td class="num">${c.testable ? fmt(c.diff) : '–'}</td><td class="num">${c.testable ? pFmt(c.p) : 'too few lines'}</td><td class="num">${c.testable ? pFmt(Math.min(1, c.p! * 3)) : '–'}</td></tr>`;
+    box.innerHTML = `<p><strong>${X} across ${escapeHtml(y)} wild-type, loss-of-function and hotspot lines.</strong></p>
+      <ul>${groups.map((gr) => `<li>${escapeHtml(gr.name)}: ${gr.values.length} lines, median ${X} scale ${fmt(workflowMedian(gr.values))}</li>`).join('')}</ul>
+      <figure><div id="group-plot" class="chart" role="group" aria-label="Per-line values in ${groups.map((gr) => `${gr.values.length} ${escapeHtml(gr.name)}`).join(', ')} lines"></div></figure>
+      <div class="table-box" tabindex="0" role="region" aria-label="Mann-Whitney tests between the three groups"><table>
+        <thead><tr><th scope="col">Comparison</th><th scope="col" class="num">Lines (first / second)</th><th scope="col" class="num">Difference of medians</th>
+        <th scope="col" class="num">Mann-Whitney p</th><th scope="col" class="num">p times 3</th></tr></thead><tbody>
+        ${row('loss of function vs wild-type', lw)}${row('hotspot vs wild-type', hw)}${row('hotspot vs loss of function', hl)}</tbody></table></div>
+      <p><small>How to read this: one value per cell line. Each row is the same Mann-Whitney test as in the two-group comparison; at least ${MIN_LINES} lines per group are needed.
+        Three comparisons are made, so the last column multiplies p by 3 (capped at 1) as a simple allowance for that; it is not part of the approved method, so read it as a caution.
+        Lines with both a loss-of-function and a hotspot mutation, flagged lines and lines without mutation calls are left out. Tissues are mixed.</small></p>`;
+    const gp = document.getElementById('group-plot');
+    if (gp) {
+      const p = palette();
+      await draw(gp, groups.map((gr, k) => boxTrace(gr.name, gr.values, p.series[k % p.series.length])),
+        { height: 280, margin: { l: 170, r: 16, t: 8, b: 44 }, xaxis: { title: { text: 'Essential scale: −1 like a core-essential gene, 0 like a non-essential gene' } },
+          yaxis: { type: 'category', autorange: 'reversed' } });
+    }
+  }
+
   async function compare(x: string, rows: GeneRow[], kind: GroupKind, ySymbol: string, tissue: string) {
     const box = document.getElementById('workflow-out')!;
     let y = '', yctx: Awaited<ReturnType<typeof loadGene>>;
@@ -119,6 +152,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       const li = lines!.screen_line[String(screens![r[0]].screen_id)];
       return li === undefined || r[2] === null ? [] : [{ line: li, value: r[2] }];
     });
+    if (kind === 'mutclass') { await compareClasses(x, y, perScreen, yctx!); return; }
     const g = makeGrouping(kind, lines!, y, yctx, tissue);
     const c = dependencyByMutation(perScreen, g.group, g.include);
     const X = `<span class="gene">${escapeHtml(x)}</span>`;

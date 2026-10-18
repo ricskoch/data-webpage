@@ -76,3 +76,11 @@ test('loss-of-function and hotspot splits: own class against lines with no mutat
   const none = makeGrouping('mutlof', lines, 'KRAS', { e: [], c: [], m: [[1, 'p.R175*', 1, 0]] });
   expect(included(none)).toEqual([0, 1, 4]);           // wild-type: lines 0 and 4 (2 has no calls, 3 is flagged)
 });
+
+test('mutationClasses: wild-type, loss of function only and hotspot only are disjoint; both-class, flagged and no-call lines are in none', async () => {
+  const { mutationClasses } = await import('../src/scripts/grouping');
+  const ctx: GeneContext = { e: [], c: [], m: [[0, 'p.G12D', 0, 1], [1, 'p.R175*', 1, 0], [4, 'p.G12D', 0, 1], [4, 'p.Q5*', 1, 0]] };
+  const c = mutationClasses(lines, ctx);
+  expect([members(c.wild), members(c.lof), members(c.hot)]).toEqual([[], [1], [0]]); // 2 no calls, 3 flagged, 4 both classes
+  expect(members(mutationClasses(lines, { e: [], c: [], m: [] }).wild)).toEqual([0, 1, 4]);
+});
