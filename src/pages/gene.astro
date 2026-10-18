@@ -45,7 +45,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 </Base>
 
 <script>
-  import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
+  import { getJSON, getScreens, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
   import { makeGrouping, KIND_LABELS, NEEDS_GENE, type GroupKind } from '../scripts/grouping';
   import { drugSummary } from '../scripts/drug';
@@ -143,7 +143,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     out.innerHTML = '<p>Loading…</p>';
     try {
       genes ??= await getJSON<Record<string, [string, number]>>('genes.json');
-      screens ??= await getJSON<Screen[]>('screens.json');
+      screens ??= await getScreens();
       const key = findGene(symbol);
       if (!key) {
         const near = suggest(Object.keys(genes), symbol, 5);
