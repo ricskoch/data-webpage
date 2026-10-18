@@ -62,6 +62,13 @@ class Candidates(unittest.TestCase):
         c = pairing.control_candidates(self.screens)
         self.assertEqual(sorted(c["screen_id"].unique()), ["d1", "d2"])
 
+    def test_control_without_a_signed_score_is_not_a_candidate_when_the_column_exists(self):
+        s = self.screens.assign(primary_score_position=1.0)
+        s.loc[s["screen_id"] == "c_lib", "primary_score_position"] = None
+        c = pairing.control_candidates(s)
+        self.assertNotIn("c_lib", c["control_screen_id"].tolist())
+        self.assertEqual(c[c["screen_id"] == "d1"]["match"].iloc[0], "same_study")
+
     def test_summary_counts_best_match(self):
         s = pairing.summary(pairing.control_candidates(self.screens))
         self.assertEqual(s, {"drug_screens": 2, "best_match": {"same_study_library": 1, "none": 1}})

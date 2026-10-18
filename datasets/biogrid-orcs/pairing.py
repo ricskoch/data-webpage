@@ -1,7 +1,8 @@
 """Link each drug screen to the untreated screens that can serve as its "no drug" arm (drug page, F22).
 
 ORCS does not link treated and untreated screens, so candidates are found by rule. A candidate is an untreated,
-full gene list, timecourse screen of the same cell line. Match levels, best first:
+full gene list, timecourse screen of the same cell line, with a signed primary score when the table says (a
+screen without one cannot be plotted). Match levels, best first:
   same_study_library  same study and library (the paper's own control arm)
   same_study          same study, other library
   same_cell_line      another study on the same cell line (lab-to-lab differences included; shown as weaker)
@@ -30,8 +31,9 @@ def control_candidates(screens, max_other_study=3):
     """One row per (drug screen, candidate control), ranked; at most max_other_study same_cell_line rows each."""
     s = screens.assign(cell=screens["cell_line_label"].map(cell_key))
     drugs = s[s["experimental_setup"].eq(DRUG_SETUP)]
+    scored = s["primary_score_position"].notna() if "primary_score_position" in s else True
     controls = s[s["treatment"].isna() & s["experimental_setup"].eq(CONTROL_SETUP)
-                 & s["result_scope"].eq("all_genes") & s["cell"].notna()]
+                 & s["result_scope"].eq("all_genes") & s["cell"].notna() & scored]
     by_cell = dict(tuple(controls.groupby("cell")))
     rows = []
     for _, d in drugs.sort_values("screen_id").iterrows():
