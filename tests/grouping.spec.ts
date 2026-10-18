@@ -37,6 +37,15 @@ test('copy split: loss against normal; gains are left out', () => {
   expect(included(c)).toEqual([0, 1, 2]);
 });
 
+test('deep-loss split: only near-complete loss against normal; shallow loss is left out', () => {
+  const d = { ...g, c: [0.1, 1.0, 1.0, 1.0, 2.0] }; // 0.1 -> ratio 0.07 (deep loss); 0.5 -> 0.41 (shallow loss)
+  const deep = makeGrouping('deeploss', lines, 'MTAP', d);
+  expect(members(deep.group)).toEqual([0]);
+  expect(included(deep)).toEqual([0, 1, 2]);
+  expect(included(makeGrouping('deeploss', lines, 'MTAP', g))).toEqual([1, 2]); // shallow loss at 0 is neither group
+  expect([deep.a, deep.b]).toEqual(['MTAP-deep loss', 'MTAP-normal copy number']);
+});
+
 test('gain split: gained or amplified against normal; losses are left out', () => {
   const c = makeGrouping('gain', lines, 'ERBB2', g);
   expect(members(c.group)).toEqual([4]);   // ratio 2^2 - 1 = 3 is a gain
