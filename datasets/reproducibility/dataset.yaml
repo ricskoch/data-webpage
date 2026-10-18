@@ -1,0 +1,12 @@
+# Reproducibility of repeated drug screens (data overview, F20). Method chosen by Richard 2026-10-18 ("Rho plus hit overlap").
+# Derived data: inherits the licence of its input (BioGRID ORCS, MIT).
+id: reproducibility
+inputs:
+  screens: https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/biogrid-orcs/0.1.0-staging/site
+method:
+  pairs: all pairs of screens with the same drug (treatment label) and cell line, both with a published score vector and the same native score name
+  score: per-screen robust z of the native primary score, as on the /drug page
+  rho: Spearman rank correlation over the genes both screens report
+  overlap: genes shared among each screen's 200 largest absolute z, with the number expected by chance (200 x 200 / shared genes)
+  min_shared_genes: 2000
+  skipped_pairs: written to skipped.csv with the reason, never dropped silently
