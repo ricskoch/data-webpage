@@ -56,6 +56,8 @@ export interface TableOptions<T> {
   /** Detail panel: HTML for the selected row. Without it the table has no selectable rows. */
   detail?: (row: T) => string;
   onSelect?: (row: T | null) => void;
+  /** Render the filter controls here (e.g. a page's left panel) instead of beside the table. */
+  filtersIn?: HTMLElement;
 }
 
 export interface TableHandle<T> { select: (row: T | null) => void }
@@ -75,10 +77,13 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): TableHandl
     return `<label>${escapeHtml(f.label)}<select data-facet="${f.key}" aria-label="${escapeHtml(f.label)}"><option value="">All</option>${opts}</select></label>`;
   }).join('');
   const search = o.search ? `<label>${escapeHtml(o.search.label)}<input type="search" data-search aria-label="${escapeHtml(o.search.label)}" /></label>` : '';
-  root.innerHTML = `<div class="workspace${o.detail ? ' has-detail' : ''}">
-    <div class="side" role="group" aria-label="Filters"><div class="filters">${search}${selects}
+  const filterBody = `<div class="filters">${search}${selects}
       <label>Rows per page<select data-size aria-label="Rows per page">${SIZES.map((s) => `<option>${s}</option>`).join('')}</select></label>
-      <button type="button" data-reset>Clear filters</button></div></div>
+      <button type="button" data-reset>Clear filters</button></div>`;
+  const fr = o.filtersIn ?? root;
+  if (o.filtersIn) o.filtersIn.innerHTML = `<div role="group" aria-label="Filters">${filterBody}</div>`;
+  root.innerHTML = `<div class="workspace${o.detail ? ' has-detail' : ''}${o.filtersIn ? ' no-side' : ''}">
+    ${o.filtersIn ? '' : `<div class="side" role="group" aria-label="Filters">${filterBody}</div>`}
     <div class="main-pane">
     <p class="caption" aria-live="polite" data-count></p>
     <div class="table-box" tabindex="0" role="region" aria-label="${escapeHtml(o.label)}"><table>
@@ -126,16 +131,17 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): TableHandl
     tr?.scrollIntoView({ block: 'nearest' });
   };
 
-  root.addEventListener('change', (e) => {
+  const onChange = (e: Event) => {
     const el = e.target as HTMLSelectElement;
     if (el.dataset.facet) chosen[el.dataset.facet] = el.value;
     if (el.hasAttribute('data-size')) size = Number(el.value);
     page = 1; render();
-  });
-  root.addEventListener('input', (e) => {
+  };
+  const onInput = (e: Event) => {
     const el = e.target as HTMLInputElement;
     if (el.hasAttribute('data-search')) { query = el.value; page = 1; render(); }
-  });
+  };
+  for (const el of new Set([root, fr])) { el.addEventListener('change', onChange); el.addEventListener('input', onInput); }
   const rowOf = (el: HTMLElement) => { const tr = el.closest<HTMLElement>('tr[data-i]'); return tr ? view[Number(tr.dataset.i)] : undefined; };
   root.addEventListener('keydown', (e) => {
     const tr = (e.target as HTMLElement).closest<HTMLElement>('tr[data-i]');
@@ -149,11 +155,11 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): TableHandl
   document.addEventListener('keydown', (e) => {
     const t = e.target as HTMLElement;
     if (e.key === '/' && !e.ctrlKey && !e.metaKey && !/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) {
-      const s = root.querySelector<HTMLInputElement>('[data-search]');
+      const s = fr.querySelector<HTMLInputElement>('[data-search]');
       if (s) { e.preventDefault(); s.focus(); }
     }
   });
-  root.addEventListener('click', (e) => {
+  const onClick = (e: Event) => {
     const target = e.target as HTMLElement;
     const row = o.detail && !target.closest('a, button') ? rowOf(target) : undefined;
     if (row) { choose(row === selected ? null : row, true); return; }
@@ -167,11 +173,12 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): TableHandl
     else if (b.hasAttribute('data-reset')) {
       for (const k of Object.keys(chosen)) delete chosen[k];
       query = ''; page = 1;
-      root.querySelectorAll<HTMLSelectElement>('select[data-facet]').forEach((s) => { s.value = ''; });
-      const s = root.querySelector<HTMLInputElement>('[data-search]'); if (s) s.value = '';
+      fr.querySelectorAll<HTMLSelectElement>('select[data-facet]').forEach((s) => { s.value = ''; });
+      const s = fr.querySelector<HTMLInputElement>('[data-search]'); if (s) s.value = '';
     }
     render();
-  });
+  };
+  for (const el of new Set([root, fr])) el.addEventListener('click', onClick);
   render();
   return { select: choose };
 }

@@ -122,10 +122,23 @@ tbody tr[tabindex]:hover { background: var(--selected); }
   tbody tr[aria-current='true'] td:first-child, tbody tr[tabindex]:hover td:first-child { background: var(--selected); }
   thead th:first-child { z-index: 2; }
 }
+.page-side { display: grid; gap: var(--space-2); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 64rem) {
+  .workspace.no-side { grid-template-columns: minmax(0, 1fr); }
+  .page-side { grid-template-columns: 17rem minmax(0, 1fr); }
+  .page-side > .side { position: sticky; top: 3.4rem; max-height: calc(100vh - 3.6rem); overflow-y: auto; padding-right: .5rem; }
+}
 @media (min-width: 90rem) {
+  .workspace.no-side.has-detail { grid-template-columns: minmax(0, 1fr) 22rem; }
   .workspace.has-detail { grid-template-columns: 16rem minmax(0, 1fr) 22rem; }
   .workspace.has-detail .detail { grid-column: auto; position: sticky; top: 3.4rem; max-height: calc(100vh - 3.6rem); overflow-y: auto; }
 }
+
+/* Pages with their own left panel (gene explorer): controls left, charts and table right */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem .9rem; margin-bottom: var(--space-2); }
+.panel h2 { font-size: 1rem; margin: 0 0 .4rem; }
+.panel .lookup { flex-direction: column; align-items: stretch; margin: .4rem 0; }
+.panel .filters { grid-template-columns: minmax(0, 1fr); margin: 0; }
 
 /* Small SVG dot strips (gene page; replaced by Plotly charts as pages are rebuilt) */
 .strip { width: 100%; height: auto; display: block; margin: .5rem 0 .25rem; }
