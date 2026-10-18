@@ -37,6 +37,13 @@ test('copy split: loss against normal; gains are left out', () => {
   expect(included(c)).toEqual([0, 1, 2]);
 });
 
+test('gain split: gained or amplified against normal; losses are left out', () => {
+  const c = makeGrouping('gain', lines, 'ERBB2', g);
+  expect(members(c.group)).toEqual([4]);   // ratio 2^2 - 1 = 3 is a gain
+  expect(included(c)).toEqual([1, 2, 4]);  // 0 is a loss, 3 is flagged
+  expect([c.a, c.b]).toEqual(['ERBB2-gained', 'ERBB2-normal copy number']);
+});
+
 test('whole-genome doubling and tissue splits', () => {
   const w = makeGrouping('wgd', lines, '', undefined);
   expect(members(w.group)).toEqual([0]);
