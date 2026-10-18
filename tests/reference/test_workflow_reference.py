@@ -1,4 +1,4 @@
-"""Independent reference test (spec section 14) for recipe 2: compare src/scripts/recipe.ts with SciPy.
+"""Independent reference test (spec section 14) for biological workflow 2: compare src/scripts/workflow.ts with SciPy.
 
 Runs the TypeScript implementation through node and checks Mann-Whitney U and p against
 scipy.stats.mannwhitneyu (asymptotic, continuity-corrected) and the bootstrap interval against
@@ -28,11 +28,11 @@ def cases():
     return out
 
 
-class RecipeMatchesScipy(unittest.TestCase):
+class WorkflowMatchesScipy(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.cases = cases()
-        run = subprocess.run(["node", "--experimental-strip-types", "--no-warnings", "tests/reference/run_recipe.mjs"],
+        run = subprocess.run(["node", "--experimental-strip-types", "--no-warnings", "tests/reference/run_workflow.mjs"],
                              input=json.dumps(cls.cases), capture_output=True, text=True, cwd=ROOT, check=True)
         cls.ours = json.loads(run.stdout)
 
