@@ -1,5 +1,6 @@
 // Prototype data source: the R2 staging bucket (not a data release; see docs/learning/M2b-pipeline.md).
 import { versioned } from './version';
+import { loadLines } from './context';
 export const DATA_URL = 'https://pub-fe3fcf6faccd4f81b4acaee420db9af5.r2.dev/biogrid-orcs/0.1.0-staging/site';
 
 export interface Screen {
@@ -33,19 +34,36 @@ export async function getJSON<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Swaps the display names in for the source labels, so every page shows and groups by one spelling; falls back to the source label. */
-export function applyDisplayNames(screens: Screen[]): Screen[] {
+/**
+ * Swaps the display names in for the source labels, so pages show one spelling. Cell lines are only merged when they are
+ * the same line (same Cellosaurus ID, else the same source label); lines that merely look alike after tidying keep their
+ * source label in brackets. Falls back to the source label when a display name is missing.
+ */
+export function applyDisplayNames(screens: Screen[], idOf: (s: Screen) => string | undefined = () => undefined): Screen[] {
+  const keyOf = (s: Screen) => idOf(s) ?? `label:${s.cell_line_raw}`;
   for (const s of screens) {
     if (s.cell_line_raw !== undefined) continue;
     s.cell_line_raw = s.cell_line_label; s.treatment_raw = s.treatment;
-    if (s.cell_line_display) s.cell_line_label = s.cell_line_display;
-    if (s.treatment && s.treatment_display) s.treatment = s.treatment_display;
+  }
+  const keys = new Map<string, Set<string>>(); // display name -> distinct lines that carry it
+  for (const s of screens) {
+    if (!s.cell_line_display) continue;
+    const k = keys.get(s.cell_line_display) ?? new Set<string>();
+    k.add(keyOf(s)); keys.set(s.cell_line_display, k);
+  }
+  for (const s of screens) {
+    if (s.cell_line_display) s.cell_line_label = keys.get(s.cell_line_display)!.size > 1 ? `${s.cell_line_display} (${s.cell_line_raw})` : s.cell_line_display;
+    if (s.treatment_raw && s.treatment_display) s.treatment = s.treatment_display;
   }
   return screens;
 }
 
 export async function getScreens(): Promise<Screen[]> {
-  return applyDisplayNames(await getJSON<Screen[]>('screens.json'));
+  const [screens, lines] = await Promise.all([getJSON<Screen[]>('screens.json'), loadLines()]);
+  return applyDisplayNames(screens, (s) => {
+    const i = lines?.screen_line[String(s.screen_id)];
+    return i === undefined ? undefined : lines!.lines[i].cellosaurus_id || lines!.lines[i].depmap_id || undefined;
+  });
 }
 
 export const fmt = (x: number | null | undefined, digits = 2) =>

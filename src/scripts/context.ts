@@ -48,8 +48,10 @@ export async function getCtx<T>(path: string): Promise<T> {
 }
 
 /** Context is optional: pages keep working (without the extra columns) if it is not published yet. */
-export async function loadLines(): Promise<Lines | null> {
-  try { return await getCtx<Lines>('lines.json'); } catch { return null; }
+let linesOnce: Promise<Lines | null> | undefined;
+export function loadLines(): Promise<Lines | null> {
+  linesOnce ??= getCtx<Lines>('lines.json').catch(() => null);
+  return linesOnce;
 }
 
 export async function loadGene(pid: string, shard: number): Promise<GeneContext | undefined> {

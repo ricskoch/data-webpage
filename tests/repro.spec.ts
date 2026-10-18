@@ -39,3 +39,15 @@ test('applyDisplayNames shows display names, keeps the source labels, and falls 
   expect([c.cell_line_label, c.treatment]).toEqual(['K562', 'DMSO']);
   expect(applyDisplayNames([a])[0].treatment).toBe('Olaparib'); // second call changes nothing
 });
+
+test('applyDisplayNames merges look-alike cell lines only when they share an ID', async () => {
+  const { applyDisplayNames } = await import('../src/scripts/data');
+  const mk = (id: string, raw: string) => ({ screen_id: id, study_id: 's', cell_line_label: raw, cell_line_display: raw.replace(/[-\s]/g, '').toUpperCase(), treatment: null }) as any;
+  const ids: Record<string, string> = { a: 'CVCL_1', b: 'CVCL_1', c: 'CVCL_2' };
+  const same = applyDisplayNames([mk('a', 'MDA-MB-231'), mk('b', 'MDA MB 231')], (s) => ids[s.screen_id]);
+  expect(same.map((s) => s.cell_line_label)).toEqual(['MDAMB231', 'MDAMB231']);
+  const apart = applyDisplayNames([mk('a', 'MDA-MB-231'), mk('c', 'MDA MB 231')], (s) => ids[s.screen_id]);
+  expect(apart.map((s) => s.cell_line_label)).toEqual(['MDAMB231 (MDA-MB-231)', 'MDAMB231 (MDA MB 231)']);
+  const noIds = applyDisplayNames([mk('x', 'HeLa'), mk('y', 'Hela'), mk('z', 'HeLa')]);
+  expect(noIds.map((s) => s.cell_line_label)).toEqual(['HELA (HeLa)', 'HELA (Hela)', 'HELA (HeLa)']);
+});
