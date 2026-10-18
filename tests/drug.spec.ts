@@ -37,6 +37,7 @@ const vectors: Record<string, unknown> = {
 };
 
 async function fakeData(page: Page) {
+  await page.route('**/ctx/**', (route) => route.fulfill({ status: 404 })); // cell line context is optional
   await page.route('**/site/**', (route) => {
     const u = new URL(route.request().url()).pathname;
     const m = u.match(/\/s\/(\d{4})\.json$/);
