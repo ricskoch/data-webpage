@@ -1,20 +1,45 @@
 ---
 import Base from '../layouts/Base.astro';
 ---
-<Base title="Drug effects · CRISPR Screen Explorer" description="Compare a CRISPR screen with a drug to a screen of the same cells without it.">
+<Base wide title="Drug effects · CRISPR Screen Explorer" description="Compare a CRISPR screen with a drug to a screen of the same cells without it.">
   <h1>Drug effects</h1>
   <p class="notice"><strong>Prototype.</strong> Not yet reviewed by a bioinformatician; do not use for research.</p>
   <p>Each dot is a gene. Across: its score in a screen of the cells <em>without</em> the drug. Up: its score in the screen
     <em>with</em> the drug. Genes on the diagonal behave the same either way. Lab analogy: two plates from the same
     cells, one with DMSO, one with drug, and each gene is plotted by how it did on each plate.</p>
-  <div id="out" aria-live="polite"><p>Loading…</p></div>
+  <div class="page-side">
+    <div class="side" role="group" aria-label="Controls">
+      <div class="panel">
+        <h2>Screens</h2>
+        <div class="lookup">
+          <div class="field"><label for="drug">Drug</label><select id="drug"></select></div>
+          <label>Drug screen<select id="screen"></select></label>
+          <label>No-drug screen<select id="control"></select></label>
+        </div>
+        <p id="match" class="caption" aria-live="polite"></p>
+      </div>
+      <div class="panel">
+        <h2>Show</h2>
+        <div class="lookup">
+          <label>Highlight gene<input id="gene" autocomplete="off" placeholder="e.g. BRCA2" /></label>
+          <label>Colour genes whose drug score differs by at least<select id="gap"><option value="0">Do not colour</option><option>2</option><option selected>3</option><option>4</option><option>6</option></select></label>
+        </div>
+        <p class="caption">The gap is in robust-z units (distance from the screen's median in units of its spread). A reading aid, not a statistical test.</p>
+      </div>
+    </div>
+    <div class="main-pane">
+      <div id="out" aria-live="polite"><p>Loading…</p></div>
+    </div>
+  </div>
 </Base>
 
 <script>
   import { getJSON, fmt, escapeHtml, treatmentLabel, type Screen } from '../scripts/data';
   import { joinVectors, topDifferences, drugsOf, MATCH_TEXT, type Vector, type Match, type Point } from '../scripts/drug';
+  import { drawPoints, palette } from '../scripts/charts';
 
   const out = document.getElementById('out')!;
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
   const opt = (v: string, t: string) => `<option value="${escapeHtml(v)}">${escapeHtml(t)}</option>`;
   const study = (s: Screen) => `${s.author_label ?? s.study_id} · ${s.cell_line_label} · ${s.library_name}`;
 
@@ -24,31 +49,28 @@ import Base from '../layouts/Base.astro';
         getJSON<Screen[]>('screens.json'), getJSON<Record<string, [string, Match][]>>('drug_pairs.json'),
         getJSON<string[]>('perts.json')]);
       const byId = new Map(screens.map((s) => [s.screen_id, s]));
-      const drugs = drugsOf(screens).filter((d) => screens.some((s) => s.treatment === d && s.has_z && pairs[s.screen_id]?.some(([c]) => byId.get(c)?.has_z)));
+      const usable = (s: Screen) => s.has_z && pairs[s.screen_id]?.some(([c]) => byId.get(c)?.has_z);
+      const drugs = drugsOf(screens).filter((d) => screens.some((s) => s.treatment === d && usable(s)));
       if (!drugs.length) { out.innerHTML = '<p>No drug screens with a usable no-drug screen are published yet.</p>'; return; }
+      $('drug').innerHTML = drugs.map((d) => opt(d, d)).join('');
       out.innerHTML = `
-        <div class="lookup">
-          <div><label for="drug">Drug</label><br /><select id="drug">${drugs.map((d) => opt(d, d)).join('')}</select></div>
-          <div><label for="screen">Drug screen</label><br /><select id="screen"></select></div>
-          <div><label for="control">No-drug screen</label><br /><select id="control"></select></div>
-          <div><label for="gene">Highlight gene</label><br /><input id="gene" autocomplete="off" placeholder="e.g. BRCA2" /></div>
-        </div>
-        <p id="match"></p>
-        <canvas id="plot" width="640" height="640" role="img" aria-label="Scatter of gene scores without and with the drug" style="width:100%;max-width:640px;height:auto;border:1px solid var(--border);background:var(--surface)"></canvas>
-        <p id="stats"></p>
+        <p id="stats" aria-live="polite"></p>
+        <figure><div id="plot" class="chart chart-square" role="group" aria-label="Scatter of gene scores without and with the drug. The tables below list the genes with the largest differences."></div>
+          <figcaption>Fig. 1. One dot per gene in both screens. The dashed diagonal is "no change"; dots below it scored lower with the drug. Click a dot to highlight the gene.</figcaption></figure>
         <p class="notice"><strong>Reading the scores.</strong> Scores are each screen's own score, as the paper reported it, converted to
           a within-screen robust z (distance from the median in units of the spread). They are not aligned so that low means depleted:
-          in some screens a high score means enriched, in others it means depleted. The score used is named under the plot.
+          in some screens a high score means enriched, in others it means depleted. The score used is named above the plot.
           Read it with the paper's definition, and trust the shape of the cloud more than single dots.</p>
-        <div id="tops"></div>`;
-      const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+        <div id="tops" class="chart-grid"></div>`;
       const cache = new Map<string, Promise<Vector>>();
       const vec = (id: string) => { if (!cache.has(id)) cache.set(id, getJSON<Vector>(`s/${id.replace(/\D/g, '').padStart(4, '0')}.json`)); return cache.get(id)!; };
       let points: Point[] = [];
+      let names: { drug: string; control: string } = { drug: 'drug', control: 'no-drug' };
       const query = () => $<HTMLInputElement>('gene').value.trim().toUpperCase();
+      const gapValue = () => Number($<HTMLSelectElement>('gap').value);
 
       const fillScreens = () => {
-        const ok = screens.filter((s) => s.treatment === $<HTMLSelectElement>('drug').value && s.has_z && pairs[s.screen_id]?.some(([c]) => byId.get(c)?.has_z));
+        const ok = screens.filter((s) => s.treatment === $<HTMLSelectElement>('drug').value && usable(s));
         $('screen').innerHTML = ok.map((s) => opt(s.screen_id, `${study(s)} · ${treatmentLabel(s)}`)).join('');
         fillControls();
       };
@@ -59,27 +81,33 @@ import Base from '../layouts/Base.astro';
       };
 
       function paint() {
-        const cv = $<HTMLCanvasElement>('plot'), g = cv.getContext('2d')!, W = cv.width, pad = 40;
-        const css = getComputedStyle(document.documentElement);
-        const col = (n: string) => css.getPropertyValue(n).trim() || '#000';
-        g.clearRect(0, 0, W, W);
-        const lim = Math.max(3, ...points.map((p) => Math.max(Math.abs(p[0]), Math.abs(p[1])))) * 1.05;
-        const px = (v: number) => pad + ((v + lim) / (2 * lim)) * (W - 2 * pad), py = (v: number) => W - px(v);
-        g.strokeStyle = col('--border'); g.lineWidth = 1;
-        g.beginPath(); g.moveTo(px(-lim), py(0)); g.lineTo(px(lim), py(0)); g.moveTo(px(0), py(-lim)); g.lineTo(px(0), py(lim)); g.stroke();
-        g.setLineDash([6, 4]); g.beginPath(); g.moveTo(px(-lim), py(-lim)); g.lineTo(px(lim), py(lim)); g.stroke(); g.setLineDash([]);
-        g.fillStyle = col('--chart-1'); g.globalAlpha = 0.25;
-        for (const [x, y] of points) g.fillRect(px(x) - 1, py(y) - 1, 2, 2);
-        g.globalAlpha = 1; g.fillStyle = col('--muted'); g.font = '14px serif';
-        g.fillText('no-drug score →', pad, W - 8); g.save(); g.translate(14, W - pad); g.rotate(-Math.PI / 2); g.fillText('drug score →', 0, 0); g.restore();
-        const q = $<HTMLInputElement>('gene').value.trim().toUpperCase();
-        const hit = q ? points.find((p) => perts[p[2]]?.toUpperCase() === q) : undefined;
-        if (hit) {
-          g.fillStyle = col('--chart-4'); g.beginPath(); g.arc(px(hit[0]), py(hit[1]), 6, 0, 2 * Math.PI); g.fill();
-          g.fillStyle = col('--text'); g.fillText(perts[hit[2]], px(hit[0]) + 9, py(hit[1]) - 6);
-        }
-        $('gene').setAttribute('aria-describedby', 'stats');
+        const q = query(), t = gapValue(), p = palette();
+        const hitIndex = q ? points.findIndex((pt) => perts[pt[2]]?.toUpperCase() === q) : -1;
+        const hit = hitIndex >= 0 ? points[hitIndex] : undefined;
         $('stats').dataset.found = hit ? '1' : q ? '0' : '';
+        $('gene').setAttribute('aria-describedby', 'stats');
+        const lim = Math.max(3, ...points.map((pt) => Math.max(Math.abs(pt[0]), Math.abs(pt[1])))) * 1.05;
+        const group = (keep: (pt: Point) => boolean) => points.filter(keep);
+        const lower = t ? group((pt) => pt[1] - pt[0] <= -t) : [], higher = t ? group((pt) => pt[1] - pt[0] >= t) : [];
+        const shown = new Set([...lower, ...higher]);
+        const rest = group((pt) => !shown.has(pt));
+        const trace = (type: string, name: string, pts: Point[], color: string, size: number, opacity: number) => ({ type, mode: 'markers', name,
+          x: pts.map((pt) => pt[0]), y: pts.map((pt) => pt[1]), customdata: pts.map((pt) => perts[pt[2]]), hoverinfo: 'text',
+          text: pts.map((pt) => `${perts[pt[2]]}<br>no drug ${fmt(pt[0])}, drug ${fmt(pt[1])}`), marker: { color, size, opacity } });
+        const build = (type: string) => {
+          const traces: any[] = [trace(type, t ? 'within the gap' : 'genes', rest, t ? p.muted : p.series[0], 4, t ? 0.3 : 0.35)];
+          if (t) traces.push(trace(type, `lower with drug (by ${t} or more)`, lower, p.series[0], 6, 0.85), trace(type, `higher with drug (by ${t} or more)`, higher, p.series[1], 6, 0.85));
+          if (hit) traces.push({ type: 'scatter', mode: 'markers+text', name: perts[hit[2]], x: [hit[0]], y: [hit[1]], text: [perts[hit[2]]],
+            textposition: 'top right', hoverinfo: 'skip', marker: { size: 13, color: 'rgba(0,0,0,0)', line: { color: p.text, width: 2.5 } } });
+          return traces;
+        };
+        return drawPoints($('plot'), build as any, { height: 560, showlegend: t > 0, legend: { orientation: 'h', y: -0.15 }, margin: { l: 56, r: 16, t: 8, b: t > 0 ? 100 : 48 },
+          xaxis: { title: { text: `${names.control}: no-drug score (robust z)` }, range: [-lim, lim], zeroline: true },
+          yaxis: { title: { text: `${names.drug}: drug score (robust z)` }, range: [-lim, lim], zeroline: true, scaleanchor: 'x' },
+          shapes: [{ type: 'line', x0: -lim, y0: -lim, x1: lim, y1: lim, line: { color: p.border, dash: 'dash', width: 1 } }] }).then((gd: any) => {
+          gd.removeAllListeners?.('plotly_click');
+          gd.on('plotly_click', (ev: any) => { const g = ev.points?.[0]?.customdata; if (g) { $<HTMLInputElement>('gene').value = g; paint(); } });
+        });
       }
 
       async function draw() {
@@ -88,11 +116,12 @@ import Base from '../layouts/Base.astro';
         const [d, c] = await Promise.all([vec(sid), vec(cid)]);
         points = joinVectors(c, d);
         const ds = byId.get(sid)!, cs = byId.get(cid)!, m = pairs[sid].find(([x]) => x === cid)![1];
+        names = { drug: ds.primary_score_name ?? 'primary score', control: cs.primary_score_name ?? 'primary score' };
         $('match').innerHTML = `<strong>Match:</strong> ${escapeHtml(MATCH_TEXT[m])}.`;
-        $('stats').textContent = `${points.length.toLocaleString('en')} genes in both screens. Drug score: ${ds.primary_score_name ?? 'primary score'}. ` +
-          `No-drug score: ${cs.primary_score_name ?? 'primary score'}.` + (query() && !points.some((p) => perts[p[2]]?.toUpperCase() === query()) ? ' Gene not in both screens.' : '');
-        const rows = (p: Point[]) => p.map((r) => `<tr><td class="gene">${escapeHtml(perts[r[2]])}</td><td>${fmt(r[0])}</td><td>${fmt(r[1])}</td><td>${fmt(r[1] - r[0])}</td></tr>`).join('');
-        const table = (title: string, p: Point[]) => `<h3>${title}</h3><div class="table-box" tabindex="0" role="region" aria-label="${title}"><table><thead><tr><th>Gene</th><th>No drug</th><th>Drug</th><th>Difference</th></tr></thead><tbody>${rows(p)}</tbody></table></div>`;
+        $('stats').textContent = `${points.length.toLocaleString('en')} genes in both screens. Drug score: ${names.drug}. ` +
+          `No-drug score: ${names.control}.` + (query() && !points.some((p) => perts[p[2]]?.toUpperCase() === query()) ? ' Gene not in both screens.' : '');
+        const rows = (p: Point[]) => p.map((r) => `<tr><td class="gene"><a href="/gene?g=${encodeURIComponent(perts[r[2]])}">${escapeHtml(perts[r[2]])}</a></td><td class="num">${fmt(r[0])}</td><td class="num">${fmt(r[1])}</td><td class="num">${fmt(r[1] - r[0])}</td></tr>`).join('');
+        const table = (title: string, p: Point[]) => `<div><h3>${title}</h3><div class="table-box" tabindex="0" role="region" aria-label="${title}"><table><thead><tr><th scope="col">Gene</th><th scope="col" class="num">No drug</th><th scope="col" class="num">Drug</th><th scope="col" class="num">Difference</th></tr></thead><tbody>${rows(p)}</tbody></table></div></div>`;
         $('tops').innerHTML = table('Lowest drug score relative to no drug', topDifferences(points, -1)) + table('Highest drug score relative to no drug', topDifferences(points, 1));
         paint();
       }
@@ -100,7 +129,8 @@ import Base from '../layouts/Base.astro';
       $('drug').addEventListener('change', fillScreens);
       $('screen').addEventListener('change', fillControls);
       $('control').addEventListener('change', draw);
-      $('gene').addEventListener('input', () => { paint(); const q = $<HTMLInputElement>('gene').value.trim().toUpperCase(); $('stats').dataset.found = q && points.some((p) => perts[p[2]]?.toUpperCase() === q) ? '1' : q ? '0' : ''; });
+      $('gap').addEventListener('change', paint);
+      $('gene').addEventListener('input', paint);
       const want = new URLSearchParams(location.search).get('d');
       if (want && drugs.includes(want)) $<HTMLSelectElement>('drug').value = want;
       fillScreens();

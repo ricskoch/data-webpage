@@ -47,3 +47,8 @@ export function barTrace(counts: Record<string, number>, color = 'var(--chart-1)
   return { type: 'bar', orientation: 'h', x: entries.map((e) => e[1]), y: entries.map((e) => e[0].replaceAll('_', ' ')),
     marker: { color: c }, hovertemplate: '%{y}: %{x:,}<extra></extra>' };
 }
+
+/** Like draw, for charts with thousands of points: tries WebGL (`scattergl`) and falls back to plain SVG (`scatter`) if the browser has none. */
+export async function drawPoints(el: HTMLElement, build: (type: 'scattergl' | 'scatter') => unknown[], over: Record<string, any> = {}, cfg: Record<string, any> = {}): Promise<any> {
+  try { return await draw(el, build('scattergl'), over, cfg); } catch { return draw(el, build('scatter'), over, cfg); }
+}
