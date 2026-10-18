@@ -1,0 +1,51 @@
+name: Auto-merge
+# Turns on GitHub auto-merge for safe PRs. GitHub then merges by itself once the
+# required checks in the main-protection ruleset are green. Rules: docs/ops/autonomy.md
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled, edited]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  auto-merge:
+    if: github.event.pull_request.draft == false && (github.actor == 'dependabot[bot]' || startsWith(github.head_ref, 'claude/'))
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Dependabot update type
+        id: dependabot
+        if: github.actor == 'dependabot[bot]'
+        uses: dependabot/fetch-metadata@v2
+      - name: Decide whether Richard must look first
+        id: gate
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          UPDATE_TYPE: ${{ steps.dependabot.outputs.update-type }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          reasons=""
+          case ",$LABELS," in *,needs-richard,*) reasons="$reasons label needs-richard;" ;; esac
+          if printf '%s' "$BODY" | grep -qiE '^- \[x\] Yes'; then reasons="$reasons cost-or-permissions box ticked;"; fi
+          if [ "$GITHUB_ACTOR" = "dependabot[bot]" ] && [ "$UPDATE_TYPE" != "version-update:semver-patch" ] && [ "$UPDATE_TYPE" != "version-update:semver-minor" ]; then
+            reasons="$reasons dependency update is not patch/minor ($UPDATE_TYPE);"
+          fi
+          protected=$(git diff --name-only "$BASE"...HEAD | grep -E '^(AGENTS\.md|docs/spec\.md|wrangler\.jsonc|\.github/|datasets/[^/]+/(dataset\.yaml|LICENCE.*|.*mapping.*|.*direction.*)|docs/adr/)' || true)
+          if [ -n "$protected" ]; then reasons="$reasons protected files changed ($(echo $protected | tr '\n' ' '));"; fi
+          echo "reasons=$reasons" >> "$GITHUB_OUTPUT"
+      - name: Enable auto-merge (squash)
+        if: steps.gate.outputs.reasons == ''
+        run: gh pr merge "$PR" --auto --squash
+      - name: Hold for Richard
+        if: steps.gate.outputs.reasons != ''
+        run: |
+          gh pr merge "$PR" --disable-auto || true
+          gh label create needs-richard --color D93F0B --description "Richard must look before this merges" || true
+          gh pr edit "$PR" --add-label needs-richard
+          echo "Not auto-merging:${{ steps.gate.outputs.reasons }}"
