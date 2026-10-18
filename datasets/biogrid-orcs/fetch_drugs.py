@@ -58,7 +58,7 @@ def report(mapping, counts):
              "## Needs a person (unmapped or several PubChem matches)", ""]
     for label, e in mapping.items():
         for c in e["components"]:
-            if c["status"] != "mapped":
+            if c["status"] not in ("mapped", "not_a_compound"):
                 lines.append(f"- `{label}` -> `{c['name']}`: {c['status']}, suggested CID {c['pubchem_cid']}")
     return "\n".join(lines) + "\n"
 
@@ -78,7 +78,9 @@ def main(work):
     (out / "drugs.draft.yaml").write_text(yaml.safe_dump(
         {"source": "PubChem PUG REST (public domain), ChEMBL API (CC BY-SA 3.0, IDs only)", "labels": mapping},
         sort_keys=True, allow_unicode=True))
-    (out / "drugs_report.md").write_text(report(mapping, counts))
+    text = report(mapping, counts)
+    (out / "drugs_report.md").write_text(text)
+    print(text)
     print(json.dumps(counts))
 
 
