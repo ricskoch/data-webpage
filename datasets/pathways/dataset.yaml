@@ -1,0 +1,13 @@
+# Reactome pathways (F20 gene selection): which human genes belong to which pathway, for the gene picker on /gene.
+# Source and use requested by Richard on 2026-10-18 ("reactome pathway filters"). The licence must be confirmed from the
+# evidence in report.md. Licence confirmed by Richard on 2026-10-18: CC BY 4.0.
+id: pathways
+taxon: "9606"
+sources:
+  reactome:
+    # Human pathways with HGNC gene symbols, one pathway per line (GMT format).
+    url: https://reactome.org/download/current/ReactomePathways.gmt.zip
+    release_url: https://reactome.org/ContentService/data/database/version
+    licence_page: https://reactome.org/license
+    licence: CC BY 4.0   # confirmed by Richard 2026-10-18; attribution required (credit shown on /gene)
+    citation: "Milacic M, et al. The Reactome Pathway Knowledgebase 2024. Nucleic Acids Res. 2024."

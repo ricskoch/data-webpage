@@ -161,3 +161,22 @@ test('/data: arrow keys move the selection and the detail panel follows', async 
   await page.keyboard.press('/');
   await expect(page.locator('#screens [data-search]')).toBeFocused();
 });
+
+// Reactome pathway picker (optional data): limits the gene dropdown and links genes to pathways.
+test('/gene: pathway picker limits the gene dropdown and offers its genes', async ({ page }) => {
+  await fakeData(page);
+  await page.route('**/pathways/**', (route) => route.fulfill({ json: { release: '95', pathways: [
+    { id: 'R-HSA-1', name: 'Apoptosis', genes: ['TP53', 'BAX'] },
+    { id: 'R-HSA-2', name: 'Cell cycle', genes: ['TP53', 'CDK1'] },
+  ] } }));
+  await page.goto('/gene');
+  await expect(page.getByRole('heading', { name: 'Browse by pathway' })).toBeVisible();
+  await page.getByLabel('Pathway', { exact: true }).fill('apop');
+  await page.getByRole('option', { name: 'Apoptosis' }).click();
+  await expect(page.locator('#pw-out')).toContainText('1 of 2 genes of this pathway are in the screens');
+  await page.locator('#pw-out').getByRole('button', { name: 'TP53' }).click();
+  await expect(page.locator('#results [data-count]')).toHaveText('60 of 60 screen results match.');
+  await expect(page.getByRole('button', { name: 'Cell cycle' })).toBeVisible();
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+  expect(results.violations).toEqual([]);
+});

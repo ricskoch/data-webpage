@@ -183,3 +183,7 @@ tbody tr:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px;
   .workspace.has-detail { grid-template-columns: 15rem minmax(0, 1fr) 22rem; }
   .workspace.has-detail .detail { grid-column: auto; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
 }
+
+.chip { font: inherit; padding: .1rem .6rem; margin: .15rem .1rem; border: 1px solid var(--accent); background: var(--surface); color: var(--accent); cursor: pointer; }
+.chip:hover { background: var(--selected); }
+.chip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
