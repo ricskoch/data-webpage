@@ -63,7 +63,10 @@ def add_primary_score(screens, score_defs, plottable):
     """primary_score_name (native name of the primary score) and has_z (a per-screen vector is published)."""
     names = score_defs.rename(columns={"position": "primary_score_position", "native_name": "primary_score_name"})
     names = names[["screen_id", "primary_score_position", "primary_score_name"]]
-    out = screens.merge(names, on=["screen_id", "primary_score_position"], how="left").astype(object)
+    # the screens table is object-typed after add_treatment; join on a numeric copy of the position
+    key = pd.to_numeric(screens["primary_score_position"])
+    out = (screens.assign(_pos=key).merge(names.rename(columns={"primary_score_position": "_pos"}).astype({"_pos": float}),
+                                          on=["screen_id", "_pos"], how="left").drop(columns="_pos").astype(object))
     out["has_z"] = out["screen_id"].isin(set(plottable))
     return out.where(out.notna(), None)
 
