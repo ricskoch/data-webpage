@@ -3,7 +3,7 @@
 // Lines in neither group, and lines Cellosaurus flags as misidentified or contaminated, are left out.
 import { copyLabel, type GeneContext, type Lines } from './context.ts';
 
-export type GroupKind = 'mutation' | 'expression' | 'copy' | 'deeploss' | 'gain' | 'wgd' | 'tissue';
+export type GroupKind = 'mutation' | 'mutlof' | 'mutgof' | 'expression' | 'copy' | 'deeploss' | 'gain' | 'wgd' | 'tissue';
 export interface Grouping { group: Set<number>; include: (line: number) => boolean; a: string; b: string }
 
 /** Expression bands match expressionLabel: off is log2(TPM+1) < 1, expressed is 3 or more (medium or high). */
@@ -11,10 +11,10 @@ export const OFF_BELOW = 1;
 export const EXPRESSED_FROM = 3;
 
 export const KIND_LABELS: Record<GroupKind, string> = {
-  mutation: 'a mutation in a gene', expression: 'a gene being switched off', copy: 'a gene losing copies', deeploss: 'a gene lost almost completely', gain: 'a gene gaining copies',
+  mutation: 'a mutation in a gene', mutlof: 'a loss-of-function mutation in a gene', mutgof: 'a hotspot (gain-of-function-like) mutation in a gene', expression: 'a gene being switched off', copy: 'a gene losing copies', deeploss: 'a gene lost almost completely', gain: 'a gene gaining copies',
   wgd: 'whole-genome doubling', tissue: 'tissue',
 };
-export const NEEDS_GENE: GroupKind[] = ['mutation', 'expression', 'copy', 'deeploss', 'gain'];
+export const NEEDS_GENE: GroupKind[] = ['mutation', 'mutlof', 'mutgof', 'expression', 'copy', 'deeploss', 'gain'];
 
 export function makeGrouping(kind: GroupKind, lines: Lines, y: string, yctx?: GeneContext, tissue?: string): Grouping {
   const all = lines.lines.map((_, i) => i);
@@ -24,6 +24,14 @@ export function makeGrouping(kind: GroupKind, lines: Lines, y: string, yctx?: Ge
     case 'mutation': // lines with no mutation calls at all must not count as wild-type
       return { group: new Set((yctx?.m ?? []).map((m) => m[0])), a: `${y}-mutant`, b: 'wild-type',
         include: (l) => fine(l) && lines.lines[l].mutation_calls !== false };
+    case 'mutlof':
+    case 'mutgof': { // same classes as the precomputed associations: LoF = DepMap LikelyLoF, hotspot = Hotspot and not LikelyLoF
+      const lof = new Set<number>(), hot = new Set<number>(), any = new Set<number>();
+      for (const [l, , isLof, isHot] of yctx?.m ?? []) { any.add(l); if (isLof) lof.add(l); else if (isHot) hot.add(l); }
+      const own = kind === 'mutlof' ? (l: number) => lof.has(l) && !hot.has(l) : (l: number) => hot.has(l) && !lof.has(l);
+      return { group: pick(own), a: kind === 'mutlof' ? `${y} loss of function` : `${y} hotspot mutation`, b: 'wild-type',
+        include: (l) => fine(l) && lines.lines[l].mutation_calls !== false && (own(l) || !any.has(l)) };
+    }
     case 'expression': {
       const e = (l: number) => yctx?.e[l] ?? null;
       return { group: pick((l) => e(l) !== null && e(l)! < OFF_BELOW), a: `${y}-off`, b: `${y}-expressed`,

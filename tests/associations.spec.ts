@@ -31,6 +31,8 @@ test('workflowOf: precomputed questions map to the workflow that asks the same t
   const { workflowOf } = await import('../src/scripts/associations');
   expect(workflowOf('mut:KRAS')).toEqual({ kind: 'mutation', gene: 'KRAS' });
   expect(workflowOf('tissue:Peripheral Nervous System')).toEqual({ kind: 'tissue', tissue: 'Peripheral Nervous System' });
+  expect(workflowOf('mutlof:TP53')).toEqual({ kind: 'mutlof', gene: 'TP53' });
+  expect(workflowOf('mutgof:KRAS')).toEqual({ kind: 'mutgof', gene: 'KRAS' });
   expect(workflowOf('tissue:')).toBeNull();
   expect(workflowOf('other:x')).toBeNull();
 });

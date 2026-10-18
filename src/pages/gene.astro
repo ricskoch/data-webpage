@@ -346,7 +346,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   function runAssociation(id: string) {
     const w = workflowOf(id), sel = document.getElementById('by') as HTMLSelectElement | null;
     if (!w || !sel) return;
-    if (w.kind === 'mutation') { sel.value = 'mutation'; (document.getElementById('y') as HTMLInputElement).value = w.gene; }
+    if (w.kind !== 'tissue') { sel.value = w.kind; (document.getElementById('y') as HTMLInputElement).value = w.gene; }
     else { sel.value = 'tissue'; (document.getElementById('tissue') as HTMLSelectElement).value = w.tissue; }
     (document.getElementById('workflow') as HTMLFormElement).requestSubmit();
     document.getElementById('workflow')!.scrollIntoView({ block: 'nearest' });
