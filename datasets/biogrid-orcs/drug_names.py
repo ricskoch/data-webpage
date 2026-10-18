@@ -12,6 +12,7 @@ import urllib.parse
 
 PUBCHEM = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound"
 CHEMBL = "https://www.ebi.ac.uk/chembl/api/data/molecule/search.json"
+CHEMBL_MOLECULE = "https://www.ebi.ac.uk/chembl/api/data/molecule.json"
 BACKGROUND = re.compile(r"^(mutation|knockout|knock-out|ko|deletion|overexpression)\s*:", re.I)
 # Conditions that are organisms or cells, not compounds: not looked up, reported as "not_a_compound".
 NOT_COMPOUND = re.compile(r"\b(virus|viral|bacteri\w*|phage|t3ss\w*|[a-z]+ cells?)\b|^virus\s*:", re.I)
@@ -60,10 +61,12 @@ def pubchem_title(cid, fetch_json):
 
 
 def chembl_exact(name, fetch_json):
-    data = fetch_json(f"{CHEMBL}?q={urllib.parse.quote(name, safe='')}&limit=5")
-    for m in (data or {}).get("molecules", []):
-        if (m.get("pref_name") or "").casefold() == name.casefold():
-            return m["molecule_chembl_id"]
+    """ChEMBL ID when the preferred name equals the name (case aside): by exact-name filter first, then by text search."""
+    quoted = urllib.parse.quote(name, safe="")
+    for url in (f"{CHEMBL_MOLECULE}?pref_name__iexact={quoted}&limit=5", f"{CHEMBL}?q={quoted}&limit=5"):
+        for m in (fetch_json(url) or {}).get("molecules", []):
+            if (m.get("pref_name") or "").casefold() == name.casefold():
+                return m["molecule_chembl_id"]
     return None
 
 
@@ -98,21 +101,35 @@ def resolve_curated(name, entry, fetch_json):
     if canonical is None:
         return out
     names = canonical if isinstance(canonical, list) else [canonical]
-    found = [resolve_spelling(n, fetch_json) for n in names]
-    out.update({k: found[0][k] for k in ("pubchem_cid", "pubchem_title", "chembl_id", "looked_up_as")})
+    also = entry.get("also_try", [])
+    found = [resolve_spelling([n, *(also if k == 0 else [])], fetch_json, entry.get("accept_first", False))
+             for k, n in enumerate(names)]
+    out.update({k: found[0][k] for k in ("pubchem_cid", "pubchem_title", "chembl_id", "looked_up_as") })
+    if found[0].get("first_of_several"):
+        out["first_of_several"] = True
     out["status"] = worst({f["status"] for f in found})
     if len(found) > 1:
         out["compounds"] = found
     return out
 
 
-def resolve_spelling(spelling, fetch_json):
-    out = {"status": "unmapped", "pubchem_cid": None, "pubchem_title": None, "chembl_id": None, "looked_up_as": spelling}
-    cids = pubchem_cids(spelling, fetch_json)
-    if cids:
-        out.update(status="mapped" if len(cids) == 1 else "review", pubchem_cid=cids[0],
-                   pubchem_title=pubchem_title(cids[0], fetch_json))
-    out["chembl_id"] = chembl_exact(spelling, fetch_json)
+def resolve_spelling(spellings, fetch_json, accept_first=False):
+    """Try the spellings in order. accept_first: several PubChem matches count as mapped to the first (flagged)."""
+    out = {"status": "unmapped", "pubchem_cid": None, "pubchem_title": None, "chembl_id": None,
+           "looked_up_as": spellings[0]}
+    for spelling in spellings:
+        cids = pubchem_cids(spelling, fetch_json)
+        if cids:
+            several = len(cids) > 1
+            out.update(status="mapped" if not several or accept_first else "review", pubchem_cid=cids[0],
+                       pubchem_title=pubchem_title(cids[0], fetch_json), looked_up_as=spelling)
+            if several and accept_first:
+                out["first_of_several"] = True
+            break
+    for spelling in spellings:
+        out["chembl_id"] = chembl_exact(spelling, fetch_json)
+        if out["chembl_id"]:
+            break
     return out
 
 

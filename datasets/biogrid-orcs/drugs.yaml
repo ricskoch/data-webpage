@@ -4,6 +4,8 @@
 #   kind        what the name is (categories in treatment_classes.yaml); beats the word rules there
 #   confidence  high / medium / low; low means "could not be identified, check the study"
 #   note        why, in plain words
+#   also_try    other spellings to try if canonical finds nothing in PubChem
+#   accept_first  true = several PubChem entries (isomers, salts) count as mapped to the first one, flagged
 # Proposed 2026-10-18; Richard confirms by merging. Identifiers are filled in by re-running "Draft drug identifiers".
 curated:
   17-AAG/Tanespimycin:
@@ -25,6 +27,8 @@ curated:
     kind: drug_compound
     confidence: high
     note: CDK9 inhibitor; may be absent from PubChem.
+    also_try:
+    - AZD-5576
   Antimycin:
     canonical: Antimycin A
     kind: drug_compound
@@ -42,16 +46,23 @@ curated:
     kind: drug_compound
     confidence: high
     note: Misspelling of asparaginase (enzyme drug); expect a ChEMBL ID, not PubChem.
+    also_try:
+    - L-Asparaginase
+    - Crisantaspase
   BI6727/Volasertib:
     canonical: Volasertib
     kind: drug_compound
     confidence: high
     note: BI 6727 is volasertib (PLK1 inhibitor).
   Benzo[a]pyrene Diol Epoxide (BPDE):
-    canonical: Benzo[a]pyrene-7,8-diol-9,10-epoxide
+    canonical: Benzo[a]pyrene Diol Epoxide
     kind: drug_compound
     confidence: medium
-    note: Several stereoisomers exist; check which one the study used.
+    note: Several stereoisomers exist; the first PubChem entry is used as the family representative. Check which one the study used if it matters.
+    also_try:
+    - Benzo[a]pyrene-7,8-diol-9,10-epoxide
+    - anti-BPDE
+    accept_first: true
   Bisindolylm. (bisindolylmaleimide/GF109203X):
     canonical: GF109203X
     kind: drug_compound
@@ -67,10 +78,10 @@ curated:
     confidence: high
     note: Recombinant protein; no PubChem compound expected.
   CBK77:
-    canonical: CBK77
+    canonical: null
     kind: drug_compound
     confidence: low
-    note: Not recognised from memory; kind assumed from the drug-exposure screen.
+    note: No public identifier found by name; likely a lab compound code. Check the study if it matters.
   CD20xCD3 bsAb (bispecific antibodies):
     canonical: null
     kind: drug_compound
@@ -82,10 +93,13 @@ curated:
     confidence: low
     note: Could not identify; possibly a toxin construct. Check the study.
   Calicheamicin:
-    canonical: Calicheamicin gamma1
+    canonical: Calicheamicin
     kind: drug_compound
     confidence: medium
-    note: PubChem has several calicheamicin entries; check the suggested one.
+    note: Several entries (gamma1 and others); first PubChem entry used.
+    also_try:
+    - Calicheamicin gamma1
+    accept_first: true
   Camptothecin-2:
     canonical: Camptothecin
     kind: drug_compound
@@ -210,10 +224,10 @@ curated:
     kind: genetic_background
     confidence: high
   KSH101:
-    canonical: KSH101
+    canonical: null
     kind: drug_compound
     confidence: low
-    note: Not recognised from memory.
+    note: No public identifier found by name; likely a lab compound code. Check the study if it matters.
   LRP8-Knockout (LRP8-KO):
     canonical: null
     kind: genetic_background
@@ -230,7 +244,8 @@ curated:
     canonical: Malformin A1
     kind: drug_compound
     confidence: medium
-    note: Several PubChem entries; check the suggested one.
+    note: Several PubChem entries; first used.
+    accept_first: true
   Mega CD40L:
     canonical: null
     kind: drug_compound
@@ -249,15 +264,16 @@ curated:
     kind: genetic_background
     confidence: high
   OTA-3998:
-    canonical: OTA-3998
+    canonical: null
     kind: drug_compound
     confidence: low
-    note: Not recognised from memory.
+    note: No public identifier found by name; likely a lab compound code. Check the study if it matters.
   Obatoclax:
     canonical: Obatoclax
     kind: drug_compound
     confidence: high
-    note: Several PubChem entries (salts); prefer the free base.
+    note: Several PubChem entries (free base and salts); first used.
+    accept_first: true
   Oligomycin:
     canonical: Oligomycin A
     kind: drug_compound
@@ -355,6 +371,8 @@ curated:
     kind: drug_compound
     confidence: medium
     note: Looked up by the chemical name given in the label.
+    also_try:
+    - 4-[[4-fluoro-3-(5-methyl-3-(1,3-thiazol-2-yl)-6,8-dihydro-5H-[1,2,4]triazolo[4,3-a]pyrazine-7-carbonyl)phenyl]methyl]-2H-phthalazin-1-one
   Transduction with rAAV2-GFP:
     canonical: null
     kind: biological_agent
@@ -368,7 +386,11 @@ curated:
     canonical: Tunicamycin
     kind: drug_compound
     confidence: high
-    note: A mixture of homologues; PubChem may list several.
+    note: A mixture of homologues; first PubChem entry used.
+    also_try:
+    - Tunicamycin A1
+    - Tunicamycin I
+    accept_first: true
   Typhoid Toxin:
     canonical: null
     kind: drug_compound
@@ -443,3 +465,6 @@ curated:
     canonical: Polymyxin B
     kind: drug_compound
     confidence: high
+    also_try:
+    - Polymyxin B sulfate
+    - Polymyxin B1
