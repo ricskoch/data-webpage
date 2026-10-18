@@ -4,6 +4,8 @@ Usage: python3 -I export_site.py <work_dir>   (reads <work_dir>/out/*.parquet, w
 
 screens.json   one row per screen: label, context, treatment, normalization status (the data overview)
 summary.json   counts for the overview page
+perts.json     perturbation index -> symbol (for the per-screen files)
+s/<NNNN>.json  drug page: {"i": perturbation indices, "z": robust z of the primary score as reported} per screen
 drug_pairs.json  drug screen -> ranked "no drug" screens [[control screen_id, match level], ...] (pairing.py)
 genes.json     symbol -> [perturbation_id, shard] for the lookup box
 g/<NN>.json    per-perturbation rows: [screen index, effect_rank, effect_scaled, effect_z, hit, native score]
@@ -17,12 +19,13 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import drug_export  # noqa: E402
 import pairing  # noqa: E402
 
 N_SHARDS = 1024
 SCREEN_FIELDS = ["screen_id", "study_id", "cell_line_label", "library_name", "perturbation_type", "selection_type",
                  "phenotype", "experimental_setup", "scoring_method", "result_scope", "normalization_status",
-                 "direction", "direction_evidence", "known_biology_pass"]
+                 "direction", "direction_evidence", "known_biology_pass", "primary_score_position"]
 
 
 def shard_of(perturbation_id):
@@ -53,6 +56,15 @@ def add_treatment(screens, conditions):
     c = conditions[["screen_id", "agent_label", "dose_raw", "duration"]].rename(
         columns={"agent_label": "treatment", "dose_raw": "treatment_dose", "duration": "treatment_duration"})
     out = screens.merge(c, on="screen_id", how="left").astype(object)
+    return out.where(out.notna(), None)
+
+
+def add_primary_score(screens, score_defs, plottable):
+    """primary_score_name (native name of the primary score) and has_z (a per-screen vector is published)."""
+    names = score_defs.rename(columns={"position": "primary_score_position", "native_name": "primary_score_name"})
+    names = names[["screen_id", "primary_score_position", "primary_score_name"]]
+    out = screens.merge(names, on=["screen_id", "primary_score_position"], how="left").astype(object)
+    out["has_z"] = out["screen_id"].isin(set(plottable))
     return out.where(out.notna(), None)
 
 
@@ -87,6 +99,32 @@ def gene_rows(results, screen_index):
     return shards
 
 
+def write_drug_vectors(out, site, plottable, screens, pert, screen_index):
+    """perts.json and s/<NNNN>.json for the drug page; returns counts (also kept in summary.json)."""
+    (site / "s").mkdir(exist_ok=True)
+    pert = pert.drop_duplicates("perturbation_id").reset_index(drop=True)
+    pert_index = {str(p): i for i, p in enumerate(pert["perturbation_id"])}
+    symbols = [str(sym) if pd.notna(sym) else str(p) for p, sym in zip(pert["perturbation_id"], pert["symbol"])]
+    (site / "perts.json").write_text(json.dumps(symbols, separators=(",", ":")))
+    cols = ["perturbation_id", "screen_id", *[f"score_{k}" for k in range(1, 6)]]
+    results = pd.read_parquet(out / "results.parquet", columns=cols)
+    scores = drug_export.primary_scores(results, screens, plottable)
+    del results
+    scores, folded = drug_export.collapse_duplicates(scores)
+    written, empty = 0, []
+    for sid, part in scores.groupby("screen_id", sort=True):
+        vec = drug_export.screen_vector(part, pert_index)
+        if vec is None:
+            empty.append(sid)
+            continue
+        (site / "s" / f"{screen_index[sid]:04d}.json").write_text(json.dumps(vec, separators=(",", ":")))
+        written += 1
+    report = {"screens": written, "duplicate_rows_folded": folded, "screens_without_spread": empty}
+    summary_path = site / "summary.json"
+    summary_path.write_text(json.dumps({**json.loads(summary_path.read_text()), "drug_vectors": report}, indent=1))
+    return report
+
+
 def main(work):
     out, site = work / "out", work / "site"
     (site / "g").mkdir(parents=True, exist_ok=True)
@@ -95,9 +133,11 @@ def main(work):
     results = pd.read_parquet(out / "results.parquet", columns=cols)
     screens = screen_table(pd.read_parquet(out / "screens.parquet"), pd.read_parquet(out / "studies.parquet"), results)
     screens = add_treatment(screens, pd.read_parquet(out / "conditions.parquet"))
+    candidates = pairing.control_candidates(screens)
+    plottable = drug_export.plottable_ids(screens, candidates)
+    screens = add_primary_score(screens, pd.read_parquet(out / "score_defs.parquet"), plottable)
     index = {sid: i for i, sid in enumerate(screens["screen_id"])}
     (site / "screens.json").write_text(json.dumps(screens.to_dict("records"), separators=(",", ":")))
-    candidates = pairing.control_candidates(screens)
     (site / "drug_pairs.json").write_text(json.dumps(drug_pairs(candidates), separators=(",", ":")))
     (site / "summary.json").write_text(json.dumps({**summary(screens), "drug_pairs": pairing.summary(candidates)},
                                                   indent=1))
@@ -110,7 +150,9 @@ def main(work):
     for n, part in results.groupby(shard.to_numpy()):
         rows = gene_rows(part, index).get(int(n), {})
         (site / "g" / f"{int(n):04d}.json").write_text(json.dumps(rows, separators=(",", ":")))
-    print(f"wrote {len(index)} screens, {len(genes)} symbols into {site}")
+    del results, pids, shard
+    report = write_drug_vectors(out, site, plottable, screens, pert, index)
+    print(f"wrote {len(index)} screens, {len(genes)} symbols, {report['screens']} drug-page vectors into {site}")
 
 
 if __name__ == "__main__":
