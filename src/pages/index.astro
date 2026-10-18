@@ -1,11 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
 
-const plates = [
-  { icon: 'helix', title: 'Screen browser', text: 'Filter screens by cell line, library and treatment.' },
-  { icon: 'lens', title: 'Gene lookup', text: 'One gene across all screens, with the experiment context.' },
-  { icon: 'align', title: 'Reproducibility', text: 'Compare screens run on similar backgrounds.' },
-  { icon: 'plasmid', title: 'Downloads', text: 'Every dataset with checksums, licence and citation.' },
+const cards = [
+  { href: '/data', title: 'Screen browser', text: 'Filter all screens by cell line, library, treatment and tissue.' },
+  { href: '/gene', title: 'Gene explorer', text: 'One gene across every screen, with cell line context and pathways.' },
+  { href: '/drug', title: 'Drug effects', text: 'Compare a screen with a drug to the same cells without it.' },
+  { href: '/data-policy', title: 'Data and licences', text: 'Where the data comes from, how it is licensed and cited.' },
 ];
 ---
 <Base
@@ -13,33 +13,20 @@ const plates = [
   description="Browse and compare public human CRISPR screens in one standard format, with experiment details alongside the results."
 >
   <section class="hero">
-    <div>
-      <p class="eyebrow">An open atlas of human CRISPR screens</p>
-      <h1>Explore human CRISPR screens without writing code</h1>
-      <p class="lede">
-        Public CRISPR screen results are spread over many files and formats. This project puts them
-        in one standard format so you can browse screens, look up a gene, and check whether similar
-        experiments agree, with the experimental details shown next to every result.
-      </p>
-    </div>
-    <figure>
-      <img class="icon" src="/icons/helix.svg" alt="Watercolour drawing of a DNA double helix" width="240" height="240" />
-      <figcaption>Fig. 1. The DNA double helix.</figcaption>
-    </figure>
+    <h1>Explore human CRISPR screens without writing code</h1>
+    <p class="lede">
+      Public CRISPR screen results are spread over many files and formats. This project puts them
+      in one standard format so you can browse screens, look up a gene, and check whether similar
+      experiments agree, with the experimental details shown next to every result.
+    </p>
   </section>
   <p class="notice">
-    <strong>Work in progress.</strong> The site is being built in small steps. The first data
-    source will be BioGRID ORCS (human screens). Nothing here is ready for research use yet.
+    <strong>Work in progress.</strong> The first data source is BioGRID ORCS (human screens).
+    Nothing here is ready for research use yet.
   </p>
-  <img class="rule icon" src="/icons/rule.svg" alt="" width="240" height="32" />
-  <h2>What is planned</h2>
-  <ul class="plates">
-    {plates.map((p) => (
-      <li>
-        <img class="icon" src={`/icons/${p.icon}.svg`} alt="" width="72" height="72" />
-        <h3>{p.title}</h3>
-        <p>{p.text}</p>
-      </li>
+  <ul class="cards">
+    {cards.map((c) => (
+      <li><h3><a href={c.href}>{c.title}</a></h3><p>{c.text}</p></li>
     ))}
   </ul>
   <p><a href="/about">Read more about the project</a></p>

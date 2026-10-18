@@ -33,16 +33,6 @@ export const fmt = (x: number | null | undefined, digits = 2) =>
 
 export const label = (s: string | null | undefined) => (s ?? 'unknown').replaceAll('_', ' ');
 
-/** Horizontal bar list as HTML, flat fills only (style guide: charts). */
-export function bars(counts: Record<string, number>, total: number): string {
-  const max = Math.max(...Object.values(counts));
-  return Object.entries(counts).map(([k, v]) =>
-    `<li><span class="bar-label">${escapeHtml(label(k))}</span>` +
-    `<span class="bar" style="width:${(100 * v / max).toFixed(1)}%"></span>` +
-    `<span class="bar-value">${v.toLocaleString('en')} <small>(${(100 * v / total).toFixed(0)}%)</small></span></li>`,
-  ).join('');
-}
-
 export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }

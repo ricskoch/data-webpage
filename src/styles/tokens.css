@@ -4,44 +4,42 @@
   measured against --bg. Change a value here, never hard-code it in a page.
 */
 :root {
-  /* Pigments, light mode */
-  --bg: #f3ead7;          /* parchment, page ground */
-  --surface: #fbf6ea;     /* vellum, cards and tables */
-  --text: #2b2118;        /* iron-gall ink, 13.2:1 */
-  --muted: #5e4b37;       /* sepia, secondary text, 6.9:1 */
-  --accent: #3b5b28;      /* sap green, links and buttons, 6.5:1 */
-  --accent-strong: #2a4419; /* hover, 9.1:1 */
-  --on-accent: #fbf6ea;   /* text on accent fills */
-  --warn: #8e3b26;        /* madder, notices and "enriched", 6.3:1 */
-  --info: #2f4a6b;        /* woad, info and "depleted", 7.6:1 */
-  --border: #b9a47e;      /* pencil rule, borders only (2.0:1, not for text) */
-  --border-soft: #d9c9a6;
-  --selected: #efe2c3;    /* selected / hovered table row */
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #17202b;        /* 15.6:1 */
+  --muted: #55606e;       /* 6.2:1 */
+  --accent: #1a5fd0;      /* links, buttons, focus ring, 5.5:1 */
+  --accent-strong: #0f4aa8;
+  --on-accent: #ffffff;
+  --warn: #b42318;        /* 6.0:1 */
+  --info: #1a5fd0;
+  --border: #c9d0d9;      /* borders only, not for text */
+  --border-soft: #e3e7ec;
+  --selected: #e8f0fe;    /* selected / hovered table row */
 
-  /* Chart pigments, categorical, use in this order (all >= 3:1 on --surface) */
-  --chart-1: #2f5e8c;     /* Prussian blue */
-  --chart-2: #c2741b;     /* gamboge */
-  --chart-3: #5a7f3a;     /* sap green */
-  --chart-4: #a3402c;     /* madder */
-  --chart-5: #6b4e8a;     /* indigo violet */
-  --chart-6: #7a5a3a;     /* sepia */
+  /* Chart colours (Okabe-Ito, colour-blind safe), categorical, use in this order */
+  --chart-1: #0072b2;
+  --chart-2: #e69f00;
+  --chart-3: #009e73;
+  --chart-4: #d55e00;
+  --chart-5: #cc79a7;
+  --chart-6: #56b4e9;
   /* Diverging score scale: depleted <- neutral -> enriched */
-  --score-low: #2f5e8c;
-  --score-mid: #e7dcc4;
-  --score-high: #a3402c;
+  --score-low: #2166ac;
+  --score-mid: #f2f2f2;
+  --score-high: #b2182b;
 
-  /* Type. Web fonts are self-hosted (fonts.css); system serifs are the fallback. */
-  --font-display: 'Playfair Display', 'Bodoni 72', Didot, 'Iowan Old Style', Georgia, serif;
-  --font-body: 'Source Serif 4', 'Source Serif Pro', 'Iowan Old Style', Charter, Georgia, serif;
+  --font-display: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
-  --step-0: 1.0625rem;    /* body, 17px */
-  --step-1: 1.25rem;
-  --step-2: 1.6rem;
-  --step-3: clamp(2rem, 1.4rem + 2.6vw, 3.2rem);
-  --leading: 1.6;
-  --tracking-caps: 0.1em;
+  --step-0: 0.95rem;      /* body, about 15px: dense enough for a data tool */
+  --step-1: 1.15rem;
+  --step-2: 1.45rem;
+  --step-3: clamp(1.8rem, 1.4rem + 1.6vw, 2.4rem);
+  --leading: 1.5;
+  --tracking-caps: 0.04em;
 
-  /* Space and layout */
   --space-1: 0.5rem;
   --space-2: 1rem;
   --space-3: 1.5rem;
@@ -49,33 +47,32 @@
   --space-5: 4rem;
   --max: 46rem;
   --max-wide: 70rem;
-  --max-app: 110rem;      /* desktop workspace pages */
-  --radius: 3px;
+  --max-app: 110rem;      /* workspace pages */
+  --radius: 6px;
 }
 
-/* Dark mode: the herbarium at night */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1d1913;
-    --surface: #27211a;
-    --text: #ede3cf;      /* 13.7:1 */
-    --muted: #c4b497;     /* 8.6:1 */
-    --accent: #a8c48a;    /* 9.1:1 */
-    --accent-strong: #c4dcaa;
-    --on-accent: #1d1913;
-    --warn: #e59b82;      /* 7.8:1 */
-    --info: #a3bcdb;      /* 9.0:1 */
-    --border: #5a4c39;
-    --border-soft: #3a3127;
-    --selected: #3a3024;
-    --chart-1: #7fa7d1;
-    --chart-2: #e0a258;
-    --chart-3: #9cbf78;
-    --chart-4: #e0836a;
-    --chart-5: #b49ad3;
-    --chart-6: #c4a37f;
-    --score-low: #7fa7d1;
-    --score-mid: #3a3127;
-    --score-high: #e0836a;
+    --bg: #0f141a;
+    --surface: #171d25;
+    --text: #e6ebf1;      /* 14.6:1 */
+    --muted: #a3afbd;     /* 8.0:1 */
+    --accent: #7fb0ff;    /* 8.6:1 */
+    --accent-strong: #a9c9ff;
+    --on-accent: #0f141a;
+    --warn: #ff9a8f;
+    --info: #7fb0ff;
+    --border: #2f3a47;
+    --border-soft: #232c37;
+    --selected: #1d2a3d;
+    --chart-1: #56b4e9;
+    --chart-2: #f0b429;
+    --chart-3: #2fc29a;
+    --chart-4: #ff8a4c;
+    --chart-5: #e39ac1;
+    --chart-6: #8ccbf2;
+    --score-low: #67a9e0;
+    --score-mid: #2a323d;
+    --score-high: #ef6f7a;
   }
 }
