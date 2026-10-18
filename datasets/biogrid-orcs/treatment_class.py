@@ -2,7 +2,7 @@
 
 A label can have several parts ("Mutation: BRCA1 | Olaparib"). Each part is sorted by the first matching rule, else
 "drug_compound" if the name is a known compound, else "unclassified". The label takes the most specific part:
-drug > biological agent > culture format > condition change > unclassified.
+biological agent > drug > culture format > condition change > unclassified.
 """
 import pathlib
 import re
@@ -14,7 +14,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import drug_names  # noqa: E402
 
 RULES_PATH = pathlib.Path(__file__).resolve().parent / "treatment_classes.yaml"
-PRIORITY = ["drug_compound", "biological_agent", "culture_format", "condition_change", "unclassified"]
+PRIORITY = ["biological_agent", "drug_compound", "culture_format", "condition_change", "genetic_background", "unclassified"]
 
 
 def load_rules(path=RULES_PATH):

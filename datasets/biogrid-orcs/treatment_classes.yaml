@@ -3,13 +3,17 @@
 # A label with no matching rule stays "unclassified" so gaps are visible, never guessed.
 categories:
   untreated: no treatment named
-  drug_compound: a drug or chemical compound (identified on PubChem or ChEMBL)
+  drug_compound: a drug, chemical, toxin or biologic such as a cytokine or antibody
   genetic_background: a cell line mutation or knockout the screen was run in
   condition_change: a change of growth conditions (oxygen, nutrients, temperature, serum)
   culture_format: a different way of growing the cells (3D, organoid, attachment)
   biological_agent: a virus, bacterium or other cells
   unclassified: not yet sorted; listed in the lookup report
 rules:
-  - {category: biological_agent, pattern: '\b(virus|viral|bacteri\w*|phage|t3ss\w*|[a-z]+ cells?)\b'}
+  - {category: biological_agent, pattern: '\b(virus|viral|lentivirus|bacteri\w*|phage|t3ss\w*|[a-z]+ cells?|macrophages?|lymphocytes?|nk|co-culture|infection|transduction|kshv|chlamydia|escherichia|legionella|mycobacterium|salmonella|e\. coli)\b'}
   - {category: culture_format, pattern: '\b(3d|2d|spheroids?|organoids?|monolayer|suspension|adherent|ultra-?low attachment|matrigel|xenograft|in vivo|hanging drop|scaffold)\b'}
   - {category: condition_change, pattern: '\b(hypox\w*|normox\w*|anox\w*|oxygen|starv\w*|withdrawal|deprivation|depletion of|glucose|glutamine|serum|nutrient\w*|medium|media|heat|cold|temperature|ph \d|acidic|osmotic|confluen\w*|passage|irradiat\w*|uv light|light)\b'}
+  - {category: condition_change, pattern: '\b(radiation|ir|absence of|conditions?)\b'}
+  - {category: genetic_background, pattern: '\b(knockout|knock-out|ko|kd|isoform)\b'}
+  - {category: drug_compound, pattern: '\b(interferon|ifn\S*|interleukin\S*|il-\d\S*|tnf\S*|tgf\S*|insulin|antibod\w*|anti-\S+|bsab|toxin|cytotoxin|ricin|lipopolysaccharide|lps|leukocidin|protein|spike\S*|immunotherapy|blockade|estradiol|cd40l|aflatoxin)\b'}
+  - {category: drug_compound, pattern: '^(blasticidin|c6 ceramide|dieldrin|l-selenocystine|alpha-amanitin|ctx-dta)$'}
