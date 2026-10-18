@@ -64,6 +64,15 @@ class ExportSite(unittest.TestCase):
         self.assertEqual(out["treatment_category"].tolist(),
                          ["drug_compound", "culture_format", "condition_change", "untreated"])
 
+    def test_display_names_added_and_raw_labels_kept(self):
+        screens = pd.DataFrame({"screen_id": ["1", "2"], "experimental_setup": ["Drug Exposure", "Timecourse"],
+                                "cell_line_label": ["MDA-MB-231", "HCT 116"], "treatment": ["olaparib", None]})
+        out = export_site.add_display_names(screens)
+        self.assertEqual(out["cell_line_display"].tolist(), ["MDAMB231", "HCT116"])
+        self.assertEqual(out["treatment_display"].tolist(), ["Olaparib", None])
+        self.assertEqual(out["cell_line_label"].tolist(), ["MDA-MB-231", "HCT 116"])
+        self.assertEqual(out["treatment"].iloc[0], "olaparib")
+
     def test_non_drug_screen_with_unknown_name_stays_unclassified(self):
         screens = pd.DataFrame({"screen_id": ["1"], "experimental_setup": ["Timecourse"], "treatment": ["Zorbex"]})
         self.assertEqual(export_site.add_treatment_category(screens)["treatment_category"].tolist(), ["unclassified"])
