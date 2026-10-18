@@ -244,3 +244,21 @@ test('/data: kinds of treatment and drug coverage', async ({ page }) => {
   await page.getByLabel('Kind of treatment', { exact: true }).selectOption('drug_compound');
   await expect(page.locator('#screens [data-count]')).toHaveText('6 of 60 screens match.');
 });
+
+test('/data: reproducibility of repeated drug screens', async ({ page }) => {
+  await fakeData(page);
+  const pairs = [['Olaparib', 'HeLa', 0, 10, 5000, 0.62, 40, 2, 1], ['Olaparib', 'HeLa', 0, 20, 5000, 0.1, 5, 2, 0]];
+  await page.route('**/repro/pairs.json', (route) => route.fulfill({ json: { top: 200, min_shared: 2000, pairs } }));
+  await page.goto('/data');
+  await expect(page.locator('#repro .stats li').first()).toContainText('2');
+  await expect(page.locator('#repro tbody tr').first()).toContainText('agree well');
+  await expect(page.locator('#repro tbody tr').first()).toContainText('(same study)');
+  await expect(page.locator('#repro tbody tr').nth(1)).toContainText('barely agree');
+  await expect.poll(() => page.evaluate(() => (document.getElementById('c-repro') as any)?.data?.map((t: any) => t.x.length))).toEqual([1, 1]);
+});
+
+test('/data: reproducibility section says so when the scores are not published', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/data');
+  await expect(page.locator('#repro')).toContainText('Not published yet');
+});

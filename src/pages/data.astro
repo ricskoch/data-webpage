@@ -11,6 +11,14 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   <p>Which drugs were screened in which cell lines. Only treatments sorted as a drug or compound are counted; growth conditions,
     culture formats, viruses and genetic backgrounds are left out here and can be filtered in the table below.</p>
   <div id="coverage" aria-live="polite"><p>Loading the coverage…</p></div>
+  <h2>Do repeated drug screens agree?</h2>
+  <p>When the same drug was screened in the same cell line more than once, the screens can be compared gene by gene. Two numbers per pair:
+    <strong>rho</strong>, the rank correlation of all scores on the genes both screens report (1 = same order, 0 = unrelated), and the
+    <strong>strongest genes</strong>, how many of each screen's 200 strongest genes (largest absolute score) are the same, next to the number two
+    random screens would share. Most genes do nothing to the cells, so rho is pulled down by noise even when the real hits agree; the strongest
+    genes tell more. Rho of 0.5 or more reads as agreeing, 0.2 to 0.5 as partly, below 0.2 as barely. Only screens with the same kind of score are
+    paired.</p>
+  <div id="repro" aria-live="polite"><p>Loading the reproducibility scores…</p></div>
   <h2>Screens</h2>
   <p>Narrow the list with the filters at the left; click a column header to sort, a row to see its details. Press / to search.</p>
   <ScoreExplainer />
@@ -24,8 +32,45 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   import { draw, barTrace } from '../scripts/charts';
   import { loadLines, credit, type Line } from '../scripts/context';
   import { kindCounts, drugCoverage, KIND_TEXT } from '../scripts/coverage';
+  import { getRepro, summarize, bandOf, overChance, BAND_TEXT } from '../scripts/repro';
 
   const box = document.getElementById('overview')!;
+  // Pairs of screens of the same drug and cell line: rho against the shared strongest genes, then the list.
+  async function drawRepro(screens: Screen[]) {
+    const el = document.getElementById('repro')!;
+    let repro;
+    try { repro = await getRepro(); } catch (err) {
+      el.innerHTML = `<p class="notice"><strong>Not published yet.</strong> The reproducibility scores have not been uploaded to the data store (${escapeHtml(String(err))}).</p>`;
+      return;
+    }
+    const pairs = [...repro.pairs].sort((a, b) => b[5] - a[5] || a[0].localeCompare(b[0], 'en'));
+    if (!pairs.length) { el.innerHTML = '<p>No drug and cell line combination has two comparable screens.</p>'; return; }
+    const s = summarize(pairs);
+    const study = (i: number) => escapeHtml(screens[i]?.author_label ?? screens[i]?.study_id ?? '–');
+    const rows = pairs.map((p) => `<tr><td>${escapeHtml(p[0])}</td><td>${escapeHtml(p[1])}</td><td>${study(p[2])} and ${study(p[3])}${p[8] ? ' (same study)' : ''}</td>
+      <td class="num">${p[5].toFixed(2)}</td><td class="num">${p[6]} of ${repro.top} <small>(chance ${p[7].toFixed(1)})</small></td><td>${BAND_TEXT[bandOf(p[5])]}</td></tr>`).join('');
+    el.innerHTML = `<ul class="stats">
+        <li><b>${s.pairs}</b><span>pairs of screens compared</span></li>
+        <li><b>${s.combos}</b><span>drug and cell line combinations</span></li>
+        <li><b>${s.median!.toFixed(2)}</b><span>median rho</span></li>
+        <li><b>${s.bands.agree}</b><span>pairs that agree well (rho 0.5 or more)</span></li>
+      </ul>
+      <div class="card"><h3>Agreement of repeated drug screens</h3>
+        <p>Each dot is a pair of screens. Further right means the whole ranking agrees; higher means more of the strongest genes are shared.</p>
+        <div class="chart" id="c-repro" role="img" aria-label="Scatter of rho against shared strongest genes for pairs of repeated drug screens"></div></div>
+      <div class="table-box" tabindex="0" role="region" aria-label="Pairs of repeated drug screens"><table>
+        <thead><tr><th scope="col">Drug</th><th scope="col">Cell line</th><th scope="col">Studies</th><th scope="col" class="num">Rho</th>
+        <th scope="col" class="num">Strongest genes shared</th><th scope="col">Reading</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    const trace = (same: number, name: string) => {
+      const ps = pairs.filter((p) => p[8] === same);
+      return { type: 'scatter', mode: 'markers', name, x: ps.map((p) => p[5]), y: ps.map((p) => p[6]), marker: { size: 9, opacity: 0.8 },
+        text: ps.map((p) => `${p[0]} in ${p[1]}<br>rho ${p[5].toFixed(2)}, ${p[6]} of ${repro.top} shared (${overChance(p).toFixed(0)} times chance)`), hoverinfo: 'text' };
+    };
+    draw(document.getElementById('c-repro')!, [trace(0, 'different studies'), trace(1, 'same study')],
+      { showlegend: true, legend: { orientation: 'h', y: -0.25 }, xaxis: { title: { text: 'rho (rank correlation of all scores)' }, range: [-0.3, 1] },
+        yaxis: { title: { text: `shared of the ${repro.top} strongest genes` }, rangemode: 'tozero' }, margin: { l: 56, r: 16, t: 8, b: 80 } }, { displayModeBar: false });
+  }
+
   // Heat map of the most screened drugs against the most screened cell lines; colour = number of screens.
   function drawCoverage(screens: Screen[]) {
     const el = document.getElementById('coverage')!;
@@ -79,6 +124,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     drawBars('c-sel', summary.by_selection); drawBars('c-cell', summary.top_cell_lines);
     drawBars('c-kind', kindCounts(screens));
     drawCoverage(screens);
+    drawRepro(screens);
 
     const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
     if (lines) document.getElementById('credit')!.innerHTML = credit(lines);
