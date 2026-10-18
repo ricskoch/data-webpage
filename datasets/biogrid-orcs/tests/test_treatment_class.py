@@ -33,6 +33,31 @@ class TreatmentClass(unittest.TestCase):
         for label in ("Influenza A virus", "Salmonella bacteria", "NK cells", "Virus: SARS-CoV-2"):
             self.assertEqual(cat(label), "biological_agent", label)
 
+    def test_first_run_gaps(self):
+        """Labels the first real run left unclassified (lookup report 2026-10-18)."""
+        expected = {
+            "biological_agent": ["Chlamydia trachomatis", "Salmonella enterica serovar Typhimurium", "Legionella pneumophila",
+                                 "Escherichia coli (str. EDL933)", "Mycobacterium tuberculosis variant bovis BCG",
+                                 "NK (activated natural killer) cells", "J774 macrophages; anti-CD20",
+                                 "Spin infection with AAV2-GFP", "Transduction with rAAV2-GFP",
+                                 "Infection with HPV18PsV-BE2", "Induction of KSHV lytic reactivation",
+                                 "TIL (Tumor Infiltrating Lymphocyte) co-culture"],
+            "condition_change": ["Radiation", "Ionizing Radiation (IR)", "Cultured in the absence of GM-CSF",
+                                 "lipoprotein-depleted culture conditions", "Wnt selection conditions",
+                                 "Mutation: LDLR (ETG3949) KO | lipoprotein-rich culture conditions"],
+            "genetic_background": ["LRP8-Knockout (LRP8-KO)", "PARP14 knockout", "KRASG12V isoform"],
+            "drug_compound": ["Interferon gamma", "TNF\u2010\u03b1", "TGF\u03b21", "anti-IgM", "Insulin", "Ricin",
+                              "Shiga Toxin Stx1", "SARS-CoV-2 Spike-RBD", "F. novicida lipopolysaccharide (LPS)",
+                              "CD20xCD3 bsAb (bispecific antibodies)", "Blasticidin", "Dieldrin", "alpha-Amanitin",
+                              "E2 (17\u03b2-estradiol)", "aflatoxin B1 (AFB1)"],
+        }
+        for kind, labels in expected.items():
+            for label in labels:
+                self.assertEqual(cat(label), kind, label)
+
+    def test_virus_with_pretreatment_stays_a_virus_screen(self):
+        self.assertEqual(cat("Virus: SARS-CoV-2 (Alpha variant)|IFN pretreatment (IFN-\u03b12a, 1pM)"), "biological_agent")
+
     def test_unknown_stays_unclassified_not_guessed(self):
         self.assertEqual(cat("Olaparib"), "unclassified")
 
