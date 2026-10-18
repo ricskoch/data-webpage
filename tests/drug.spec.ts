@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { joinVectors, topDifferences, drugsOf } from '../src/scripts/drug';
+import { joinVectors, topDifferences, drugsOf, drugSummary } from '../src/scripts/drug';
 
 // Drug page (F22): pure joining logic, then the page with fake data in place of the R2 bucket.
 test('joinVectors keeps only genes in both screens, x = no-drug, y = drug', () => {
@@ -16,6 +16,12 @@ test('topDifferences ranks by drug minus no-drug, ties by gene index', () => {
 
 test('drugsOf lists drugs that have a published vector, sorted', () => {
   expect(drugsOf([{ treatment: 'b', has_z: true }, { treatment: 'A', has_z: true }, { treatment: 'c', has_z: false }, { treatment: null, has_z: true }])).toEqual(['A', 'b']);
+});
+
+test('drugSummary counts screens, lines and hits per treatment, hits first', () => {
+  const r = (treatment: string | null, cell_line_label: string, hit: number) => ({ treatment, cell_line_label, hit });
+  expect(drugSummary([r('B', 'HeLa', 0), r('A', 'HeLa', 1), r('A', 'K562', 1), r(null, 'HeLa', 1), r('B', 'HeLa', 0)]))
+    .toEqual([{ drug: 'A', screens: 2, hits: 2, lines: 2 }, { drug: 'B', screens: 2, hits: 0, lines: 1 }]);
 });
 
 const base = { study_id: 'st', author_label: 'Au (2020)', year: 2020, cell_line_label: 'HAP1', library_name: 'TKOv3', perturbation_type: 'knockout',

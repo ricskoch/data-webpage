@@ -101,6 +101,8 @@ import Base from '../layouts/Base.astro';
       $('screen').addEventListener('change', fillControls);
       $('control').addEventListener('change', draw);
       $('gene').addEventListener('input', () => { paint(); const q = $<HTMLInputElement>('gene').value.trim().toUpperCase(); $('stats').dataset.found = q && points.some((p) => perts[p[2]]?.toUpperCase() === q) ? '1' : q ? '0' : ''; });
+      const want = new URLSearchParams(location.search).get('d');
+      if (want && drugs.includes(want)) $<HTMLSelectElement>('drug').value = want;
       fillScreens();
     } catch (err) {
       out.innerHTML = `<p class="notice"><strong>Data not available.</strong> ${escapeHtml(String(err))}</p>`;
