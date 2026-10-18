@@ -112,13 +112,13 @@ test('/gene: the gene\'s own mutation, expression and copy number in each screen
   await expect(row.locator('td').nth(-3)).toHaveText('p.Q136fs (loss of function)');
   await expect(row.locator('td').nth(-2)).toHaveText('0.4 off');
   await expect(row.locator('td').nth(-1)).toHaveText('0.10 deep loss');
-  await page.getByLabel('Gene', { exact: true }).fill('tp53');
-  await page.getByLabel('Gene', { exact: true }).press('Escape'); // dismiss the gene dropdown, which would cover the button
+  await page.locator('#y').fill('tp53');
+  await page.locator('#y').press('Escape'); // dismiss the gene dropdown, which would cover the button
   await page.getByRole('button', { name: 'Compare' }).click();
   await expect(page.locator('#workflow-out')).toContainText('Not enough lines to compare');
   await expect(page.locator('#workflow-out')).toContainText('TP53-mutant lines: 1; wild-type lines: 1');
   await page.getByLabel('Compare lines by').selectOption('tissue');
-  await expect(page.getByLabel('Gene', { exact: true })).toBeHidden();
+  await expect(page.locator('#y')).toBeHidden();
   await page.locator('#tissue').selectOption('Myeloid');
   await page.getByRole('button', { name: 'Compare' }).click();
   await expect(page.locator('#workflow-out')).toContainText('Myeloid lines: 1; all other tissues lines: 1');
