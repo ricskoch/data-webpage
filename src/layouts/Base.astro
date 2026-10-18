@@ -12,7 +12,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const nav = [
   { href: '/', label: 'Home' },
   { href: '/data', label: 'Data' },
-  { href: '/gene', label: 'Gene lookup' },
+  { href: '/gene', label: 'Gene explorer' },
   { href: '/drug', label: 'Drug effects' },
   { href: '/about', label: 'About' },
   { href: '/data-policy', label: 'Data policy' },
@@ -25,14 +25,13 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="preload" href="/fonts/source-serif-4-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="icon" href="/icons/cas9.svg" type="image/svg+xml" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
   </head>
   <body class={wide ? 'app' : undefined}>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site">
       <div class="wrap">
-        <a class="brand" href="/"><img class="icon" src="/icons/cas9.svg" alt="" width="44" height="44" />CRISPR Screen Explorer</a>
+        <a class="brand" href="/"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" style="fill:var(--accent)"/><circle cx="10" cy="11" r="2.6" style="fill:var(--on-accent)"/><circle cx="21" cy="9" r="2.6" style="fill:var(--on-accent)" opacity=".7"/><circle cx="16" cy="20" r="2.6" style="fill:var(--on-accent)"/><circle cx="24" cy="23" r="2.6" style="fill:var(--on-accent)" opacity=".7"/></svg>CRISPR Screen Explorer</a>
         <nav aria-label="Main">
           <ul>
             {nav.map((item) => (

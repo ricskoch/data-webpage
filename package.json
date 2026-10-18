@@ -14,7 +14,8 @@
     "test": "playwright test"
   },
   "dependencies": {
-    "astro": "^7.3.8"
+    "astro": "^7.3.8",
+    "plotly.js-cartesian-dist-min": "^3.0.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",

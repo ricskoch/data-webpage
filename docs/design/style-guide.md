@@ -1,67 +1,43 @@
-# Style guide: botanical plate look
+# Style guide: clean data-explorer look
 
-Approved by the owner on 2026-10-11 (preview: "Botanical style preview" artifact in the project).
-Every page, chart, icon and future item follows this guide. Tokens live in `src/styles/tokens.css`;
-use the CSS variables, never raw hex values in pages.
+Decided by the owner on 2026-10-18: the Victorian botanical look (PR #17) is dropped. The site is a
+clean, modern data tool in the spirit of the DepMap Data Explorer: controls on the left, interactive
+Plotly charts in the middle, details on the right. Tokens live in `src/styles/tokens.css`; use the
+CSS variables, never raw hex values in pages.
 
-## Idea in one line
-A 19th-century natural-history plate (parchment, ink, watercolour) used to show modern molecular
-data. The decoration is old; the data presentation is strict and modern.
+## Principles
+- The data is the interface: charts and tables first, decoration none.
+- Every chart is interactive (hover, zoom, click-through to the underlying screen or gene).
+- Plain language next to every statistic: what was compared, how many, how sure.
+- Desktop first (workspace with a left control panel); the layout stacks on narrow screens.
 
-## Colour
-| Token | Light | Dark | Use | Contrast on ground (light / dark) |
-|---|---|---|---|---|
-| `--bg` | #f3ead7 parchment | #1d1913 | page ground | - |
-| `--surface` | #fbf6ea vellum | #27211a | cards, tables, notices | - |
-| `--text` | #2b2118 ink | #ede3cf | body text | 13.2 / 13.7 |
-| `--muted` | #5e4b37 sepia | #c4b497 | captions, secondary text | 6.9 / 8.6 |
-| `--accent` | #3b5b28 sap green | #a8c48a | links, buttons, focus ring | 6.5 / 9.1 |
-| `--warn` | #8e3b26 madder | #e59b82 | warnings, "enriched" | 6.3 / 7.8 |
-| `--info` | #2f4a6b woad | #a3bcdb | info, "depleted" | 7.6 / 9.0 |
-| `--border` | #b9a47e pencil | #5a4c39 | rules and borders only, never text | 2.0 / 2.1 |
+## Colour (light / dark)
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--bg` | #f6f7f9 | #0f141a | page ground |
+| `--surface` | #ffffff | #171d25 | cards, tables, panels |
+| `--text` | #17202b | #e6ebf1 | body text |
+| `--muted` | #55606e | #a3afbd | captions, labels |
+| `--accent` | #1a5fd0 | #7fb0ff | links, buttons, focus ring, selection |
+| `--warn` | #b42318 | #ff9a8f | warnings, "enriched" |
+| `--border` | #c9d0d9 | #2f3a47 | borders only, never text |
 
-Rules: text must reach 4.5:1 (WCAG AA). Links stay underlined so they never rely on colour alone.
-New colours need a contrast check before use.
+Text must reach 4.5:1 (WCAG AA). Links stay underlined. New colours need a contrast check.
 
 ## Type
-- **Headings:** Playfair Display, weight 600. A Didone like Victorian title pages. Headings only.
-- **Body, tables, labels:** Source Serif 4. Made for screen reading; has small capitals and tabular figures.
-- Both are SIL Open Font License, self-hosted from `public/fonts/` (Latin subset, variable files, licences beside them) and declared in `src/styles/fonts.css`. Never load fonts from Google Fonts or another third party.
-- Labels and table headers: small capitals (`font-variant-caps: all-small-caps`, letter-spacing 0.1em).
-- Gene symbols: italic (`.gene`). Numbers in tables: tabular figures, right-aligned (`td.num`).
-- Captions: italic sepia, numbered "Fig. n." / "Table n.".
+System UI font stack (no web fonts, nothing to download). Body about 15 px, labels 13 px,
+numbers in tables use tabular figures and are right-aligned. Gene symbols are italic (`.gene`).
 
-## Icons
-- Molecular schemes only: no plants or other organisms. Current set in `public/icons/`:
-  `cas9` (logo, favicon), `helix` (screens, data), `lens` (search, gene lookup), `align`
-  (comparison, reproducibility), `plasmid` (downloads, docs), `sgrna` (methods, learning), `rule` (section divider).
-- Style: SVG, 96 x 96 viewBox, translucent pigment washes with darker pooled edges and paper grain
-  (SVG filters), under a slightly wavering ink line (#3a2a1c, 1.6 px). Pigments: woad #5b86b4,
-  ochre #d29a45, madder #b5543a, green #6e9a48.
-- All icons are original work for this project. Never trace or copy scanned book plates or other
-  people's illustrations without a checked licence. Keep each file under about 5 KB.
-- Give every icon `class="icon"`: in dark mode CSS flips its lightness so the ink line reads light.
-- Decorative icons get `alt=""`; an icon that carries meaning gets a real `alt`.
+## Charts (Plotly, `src/scripts/charts.ts`)
+- Plotly cartesian bundle, loaded on demand; `layout()` applies the tokens so dark mode works.
+- Categorical series use `--chart-1..6` (Okabe-Ito, colour-blind safe), in order. Beyond six, use small multiples.
+- Gene scores use the diverging scale `--score-low` (depleted) to `--score-high` (enriched). Always say the direction in words.
+- Large scatters (thousands of genes) use `scattergl`. Give each chart container `role="group"` and an `aria-label`, and put the key finding in text next to it.
+- Hover text names the screen or gene and the exact value.
 
-## Charts
-- Flat fills only. The watercolour texture is decoration and must never sit on data marks.
-- Categorical series: `--chart-1` to `--chart-6`, in order. The first two differ in lightness as well
-  as hue, which keeps them apart for colour-blind readers. Beyond six series, use small multiples.
-- Gene scores: diverging scale `--score-low` (depleted, blue) to `--score-mid` (no effect) to
-  `--score-high` (enriched, madder). Always label the direction in words.
-- Thin ink axes, few or no gridlines, body font for labels, numbered italic caption.
-- Charts read the CSS variables at render time so dark mode works.
-
-## Components
-- **Notice:** vellum box with a double pencil rule, like a specimen label (`.notice`).
-- **Plates:** icon cards in a responsive grid (`.plates`).
-- **Tables:** inside `.table-box` (scrolls sideways on phones), ink rule under the header. Give the box `tabindex="0" role="region" aria-label="…"` so keyboard users can scroll it (axe rule scrollable-region-focusable).
-- **Data tables:** use `mountTable` (`src/scripts/table.ts`): filters as a grid above the table, sortable headers (`aria-sort`), a pager below. Never render more than one page of rows.
-- **Explainer:** `<details class="explainer">` with a definition list, for "how to read this" keys.
-- **Divider:** `rule.svg` (`.rule`) between major sections, at most once or twice a page.
-
-## Layout and accessibility
-- Reading width `--max` (46rem); header and footer use `--max-wide`. Workspace pages (`<Base wide>`, data tables and plots) use `--max-app` (110rem) and are designed for desktop first: filters in a sticky left panel, results in the middle, details at the right; they stack on narrow screens.
-- Selectable rows (`mountTable` with `detail`): `aria-current` marks the selection, rows are keyboard-focusable (Enter/Space select, arrows move). Panels are `role="group"`, not `aside`, to keep axe's landmark rules happy.
-- Usable at 375 px wide with no horizontal scroll; touch targets at least 44 px tall.
-- Respect dark mode through the tokens; do not add a separate dark stylesheet.
+## Layout (`<Base wide>` pages)
+- Top bar with the site name and navigation; content up to `--max-app` wide.
+- `.workspace`: left control panel (sticky, 16 rem), main canvas, optional right detail panel (from 90 rem).
+- Tables: sticky header and first column, selectable rows (`aria-current`), keyboard arrows, `/` focuses search.
+- Panels use `role="group"`, not `aside`, to satisfy axe's landmark rules.
+- Usable at 375 px with no horizontal page scroll; touch targets at least 40 px.

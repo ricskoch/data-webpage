@@ -6,7 +6,7 @@ const pages = [
   { path: '/about', heading: /About/ },
   { path: '/data-policy', heading: /Data policy/ },
   { path: '/data', heading: /Data overview/ },
-  { path: '/gene', heading: /Gene lookup/ },
+  { path: '/gene', heading: /Gene explorer/ },
 ];
 
 for (const p of pages) {

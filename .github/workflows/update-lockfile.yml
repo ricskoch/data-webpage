@@ -1,0 +1,29 @@
+# Regenerates package-lock.json on a runner when a PR changes package.json and carries the label `update-lockfile`.
+# Why: the cloud sandbox Claude works in cannot reach the npm registry, so it cannot run `npm install` itself.
+# Only runs for branches of this repository (never forks) and only commits package-lock.json.
+name: Update lockfile
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: write
+jobs:
+  lock:
+    if: github.event.label.name == 'update-lockfile' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm install --package-lock-only --ignore-scripts
+      - name: Commit the lockfile
+        run: |
+          if git diff --quiet package-lock.json; then echo "lockfile already up to date"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "Update package-lock.json"
+          git push

@@ -142,19 +142,36 @@ test('/gene: dropdown suggests known genes and unknown symbols are rejected', as
   await expect(page.locator('#form-error')).toContainText('not a gene in this collection');
 });
 
-test('/gene: selecting a row shows its details and marks its dot in the plot; the plot follows the filters', async ({ page }) => {
+// The plot is a Plotly chart: its data tells how many dots it holds and which one is ringed.
+const plot = (page: Page) => page.evaluate(() => {
+  const d = (document.getElementById('strip') as any)?.data ?? [];
+  const boxes = d.filter((t: any) => t.type === 'box');
+  return { dots: boxes.reduce((n: number, t: any) => n + t.x.length, 0), rows: boxes.map((t: any) => t.name), ringed: d.filter((t: any) => t.name === 'selected').length };
+});
+
+test('/gene: selecting a row shows its details and rings its dot in the plot; the plot follows the filters', async ({ page }) => {
   await fakeData(page);
   await page.goto('/gene?g=TP53');
-  await expect(page.locator('#strip circle')).toHaveCount(60);
+  await expect.poll(() => plot(page).then((p) => p.dots)).toBe(60);
   await page.locator('#results tbody tr').nth(2).click();
   await expect(page.locator('[data-detail] h3')).toHaveText('Author 2 (2020)');
-  await expect(page.locator('#strip circle.picked')).toHaveCount(1);
+  await expect.poll(() => plot(page).then((p) => p.ringed)).toBe(1);
   await page.getByLabel('Treatment', { exact: true }).selectOption('Olaparib');
-  await expect(page.locator('#strip circle')).toHaveCount(6);
+  await expect.poll(() => plot(page).then((p) => p.dots)).toBe(6);
   await page.getByRole('button', { name: 'Clear filters' }).click();
-  await page.locator('#strip circle').nth(10).dispatchEvent('click');
-  await expect(page.locator('#strip circle.picked')).toHaveCount(1);
+  await expect.poll(() => plot(page).then((p) => p.dots)).toBe(60);
+  // a click on a dot behaves like a click on its table row
+  await page.evaluate(() => (document.getElementById('strip') as any).emit('plotly_click', { points: [{ customdata: 10 }] }));
   await expect(page.locator('#results tr[aria-current="true"]')).toHaveCount(1);
+  await expect.poll(() => plot(page).then((p) => p.ringed)).toBe(1);
+});
+
+test('/gene: the plot can be grouped by cell line', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/gene?g=TP53');
+  await expect.poll(() => plot(page).then((p) => p.rows.length)).toBeGreaterThan(0);
+  await page.getByLabel('Group the plot by').selectOption('cell');
+  await expect.poll(() => plot(page).then((p) => [...p.rows].sort())).toEqual(['HeLa', 'K562']);
 });
 
 test('/data: arrow keys move the selection and the detail panel follows', async ({ page }) => {

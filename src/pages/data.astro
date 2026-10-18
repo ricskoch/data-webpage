@@ -15,8 +15,9 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 </Base>
 
 <script>
-  import { getJSON, bars, label, escapeHtml, type Screen, treatmentLabel } from '../scripts/data';
+  import { getJSON, label, escapeHtml, type Screen, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
+  import { draw, barTrace } from '../scripts/charts';
   import { loadLines, credit, type Line } from '../scripts/context';
 
   const box = document.getElementById('overview')!;
@@ -36,15 +37,18 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         <li><b>${(summary.rows / 1e6).toFixed(1)} M</b><span>gene results</span></li>
         <li><b>${(summary.by_status.anchored ?? 0).toLocaleString('en')}</b><span>on the essential-gene scale</span></li>
       </ul>
-      <h2>How comparable are the screens?</h2>
+      <h2>The collection at a glance</h2>
       <p>Each screen's scores are aligned so that low means depleted, then turned into a within-screen rank.
         Screens that qualify also get a scale where 0 is a typical non-essential gene and −1 a typical core-essential gene.</p>
-      <ul class="bars">${bars(summary.by_status, n)}</ul>
-      <h2>Perturbation and selection</h2>
-      <ul class="bars">${bars(summary.by_perturbation, n)}</ul>
-      <ul class="bars">${bars(summary.by_selection, n)}</ul>
-      <h2>Most screened cell lines</h2>
-      <ul class="bars">${bars(summary.top_cell_lines, n)}</ul>`;
+      <div class="chart-grid">
+        <div class="card"><h3>How comparable are the screens?</h3><div class="chart" id="c-status" role="group" aria-label="Screens by comparability class"></div></div>
+        <div class="card"><h3>Perturbation</h3><div class="chart" id="c-pert" role="group" aria-label="Screens by perturbation type"></div></div>
+        <div class="card"><h3>Selection</h3><div class="chart" id="c-sel" role="group" aria-label="Screens by selection type"></div></div>
+        <div class="card"><h3>Most screened cell lines</h3><div class="chart" id="c-cell" role="group" aria-label="Most screened cell lines"></div></div>
+      </div>`;
+    const drawBars = (id: string, counts: Record<string, number>) => draw(document.getElementById(id)!, [barTrace(counts)], { margin: { l: 130, r: 16, t: 8, b: 32 } }, { displayModeBar: false });
+    drawBars('c-status', summary.by_status); drawBars('c-pert', summary.by_perturbation);
+    drawBars('c-sel', summary.by_selection); drawBars('c-cell', summary.top_cell_lines);
 
     const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
     if (lines) document.getElementById('credit')!.innerHTML = credit(lines);
