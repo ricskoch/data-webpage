@@ -7,6 +7,10 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   <p class="notice"><strong>Prototype.</strong> BioGRID ORCS 2.0.18, human screens, converted by this project's
     pipeline. Not yet reviewed by a bioinformatician; do not use for research.</p>
   <div id="overview" aria-live="polite"><p>Loading the data…</p></div>
+  <h2>Drugs and cell lines</h2>
+  <p>Which drugs were screened in which cell lines. Only treatments sorted as a drug or compound are counted; growth conditions,
+    culture formats, viruses and genetic backgrounds are left out here and can be filtered in the table below.</p>
+  <div id="coverage" aria-live="polite"><p>Loading the coverage…</p></div>
   <h2>Screens</h2>
   <p>Narrow the list with the filters at the left; click a column header to sort, a row to see its details. Press / to search.</p>
   <ScoreExplainer />
@@ -19,8 +23,31 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   import { mountTable } from '../scripts/table';
   import { draw, barTrace } from '../scripts/charts';
   import { loadLines, credit, type Line } from '../scripts/context';
+  import { kindCounts, drugCoverage, KIND_TEXT } from '../scripts/coverage';
 
   const box = document.getElementById('overview')!;
+  // Heat map of the most screened drugs against the most screened cell lines; colour = number of screens.
+  function drawCoverage(screens: Screen[]) {
+    const el = document.getElementById('coverage')!;
+    const cov = drugCoverage(screens);
+    if (!cov.drugs.length) { el.innerHTML = '<p>No drug screens in this dataset.</p>'; return; }
+    const drugs = cov.drugs.slice(0, 25), lines = cov.lines.slice(0, 15);
+    el.innerHTML = `<ul class="stats">
+        <li><b>${cov.drugs.length.toLocaleString('en')}</b><span>drugs and compounds</span></li>
+        <li><b>${cov.lines.length.toLocaleString('en')}</b><span>cell lines with a drug screen</span></li>
+        <li><b>${cov.cells.size.toLocaleString('en')}</b><span>drug and cell line pairs</span></li>
+        <li><b>${[...cov.cells.values()].filter((c) => c.screens > 1).length.toLocaleString('en')}</b><span>pairs screened more than once</span></li>
+      </ul>
+      <div class="card"><h3>Screens per drug and cell line</h3>
+        <p>Showing the ${drugs.length} drugs and ${lines.length} cell lines with the most drug screens. Hover a square for the study count and the largest number of genes covered.</p>
+        <div class="chart" id="c-cov" style="height:${180 + drugs.length * 22}px" role="img" aria-label="Heat map of the number of screens per drug and cell line"></div></div>`;
+    const z = drugs.map((d) => lines.map((l) => cov.cells.get(`${d.drug}|${l.line}`)?.screens ?? null));
+    const hover = drugs.map((d) => lines.map((l) => { const c = cov.cells.get(`${d.drug}|${l.line}`);
+      return c ? `${d.drug} in ${l.line}<br>${c.screens} screen(s), ${c.studies} stud${c.studies === 1 ? 'y' : 'ies'}<br>up to ${c.genes.toLocaleString('en')} genes` : 'not screened'; }));
+    draw(document.getElementById('c-cov')!, [{ type: 'heatmap', x: lines.map((l) => l.line), y: drugs.map((d) => d.drug), z, text: hover,
+      hoverinfo: 'text', xgap: 2, ygap: 2, colorscale: [[0, '#cfe3f3'], [1, '#08519c']], colorbar: { title: 'screens' } }],
+      { margin: { l: 150, r: 16, t: 8, b: 110 }, yaxis: { autorange: 'reversed' }, xaxis: { tickangle: -45 } }, { displayModeBar: false });
+  }
   async function main() {
   try {
     const [summary, screens, lines] = await Promise.all([getJSON<any>('summary.json'), getJSON<Screen[]>('screens.json'), loadLines()]);
@@ -45,10 +72,13 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         <div class="card"><h3>Perturbation</h3><div class="chart" id="c-pert" role="group" aria-label="Screens by perturbation type"></div></div>
         <div class="card"><h3>Selection</h3><div class="chart" id="c-sel" role="group" aria-label="Screens by selection type"></div></div>
         <div class="card"><h3>Most screened cell lines</h3><div class="chart" id="c-cell" role="group" aria-label="Most screened cell lines"></div></div>
+        <div class="card"><h3>What was done to the cells?</h3><div class="chart" id="c-kind" role="group" aria-label="Screens by kind of treatment"></div></div>
       </div>`;
     const drawBars = (id: string, counts: Record<string, number>) => draw(document.getElementById(id)!, [barTrace(counts)], { margin: { l: 130, r: 16, t: 8, b: 32 } }, { displayModeBar: false });
     drawBars('c-status', summary.by_status); drawBars('c-pert', summary.by_perturbation);
     drawBars('c-sel', summary.by_selection); drawBars('c-cell', summary.top_cell_lines);
+    drawBars('c-kind', kindCounts(screens));
+    drawCoverage(screens);
 
     const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
     if (lines) document.getElementById('credit')!.innerHTML = credit(lines);
@@ -56,7 +86,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       const l = lineOf(s);
       const row = (k: string, v: string) => `<dt>${k}</dt><dd>${v}</dd>`;
       return `<h3>${text(s.author_label ?? s.study_id)}</h3><dl>
-        ${row('Cell line', text(s.cell_line_label))}${row('Phenotype', text(s.phenotype))}${row('Treatment', text(treatmentLabel(s)))}
+        ${row('Cell line', text(s.cell_line_label))}${row('Phenotype', text(s.phenotype))}${row('Treatment', text(treatmentLabel(s)))}${row('Kind of treatment', text(KIND_TEXT[s.treatment_category ?? ''] ?? KIND_TEXT.unclassified))}
         ${row('Library', text(s.library_name))}${row('Perturbation', text(label(s.perturbation_type)))}${row('Selection', text(label(s.selection_type)))}
         ${row('Scoring method', text(s.scoring_method))}${row('Genes', (s.rows ?? 0).toLocaleString('en'))}
         ${row('Comparable as', text(label(s.normalization_status)))}${row('Score direction', text(s.direction))}
@@ -73,6 +103,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         { key: 'phenotype', label: 'Phenotype', get: (s) => s.phenotype },
         { key: 'setup', label: 'Setup', get: (s) => s.experimental_setup },
         { key: 'treatment', label: 'Treatment', get: (s) => s.treatment ?? 'none' },
+        { key: 'kind', label: 'Kind of treatment', get: (s) => s.treatment_category ?? 'unclassified', show: (k: string) => KIND_TEXT[k] ?? k },
         { key: 'type', label: 'Type', get: (s) => s.perturbation_type, show: label },
         { key: 'selection', label: 'Selection', get: (s) => s.selection_type, show: label },
         { key: 'status', label: 'Comparable as', get: (s) => s.normalization_status, show: label },

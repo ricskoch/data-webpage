@@ -9,6 +9,7 @@ const screen = (i: number, cell: string, status: string) => ({
   scoring_method: 'Log2FC', result_scope: 'all_genes', normalization_status: status, direction: null,
   direction_evidence: null, known_biology_pass: null, rows: 18000 + i, hits: 10,
   treatment: i % 10 ? null : 'Olaparib', treatment_dose: i % 10 ? null : '5.0 µM', treatment_duration: null,
+  treatment_category: i % 10 ? 'untreated' : 'drug_compound',
 });
 const screens = Array.from({ length: 60 }, (_, i) => screen(i, i < 40 ? 'HeLa' : 'K562', i % 4 ? 'anchored' : 'rank_only'));
 const summary = { screens: 60, studies: 3, rows: 1_000_000, by_status: { anchored: 45, rank_only: 15 },
@@ -228,4 +229,18 @@ test('/gene: ?by=tissue&t= runs the tissue workflow (links from the associations
   await fakeContext(page);
   await page.goto('/gene?g=TP53&by=tissue&t=Myeloid');
   await expect(page.locator('#workflow-out')).toContainText('Myeloid lines: 1; all other tissues lines: 1');
+});
+
+// Data overview: treatment kinds and the drug x cell line coverage (F20).
+test('/data: kinds of treatment and drug coverage', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/data');
+  await expect(page.locator('#coverage')).toContainText('drugs and compounds');
+  await expect(page.locator('#coverage .stats li').first()).toContainText('1');
+  // 6 Olaparib screens: 4 in HeLa (0, 10, 20, 30), 2 in K562 (40, 50)
+  const z = () => page.evaluate(() => (document.getElementById('c-cov') as any)?.data?.[0]?.z);
+  await expect.poll(z).toEqual([[4, 2]]);
+  await expect.poll(() => page.evaluate(() => (document.getElementById('c-kind') as any)?.data?.[0]?.y ?? (document.getElementById('c-kind') as any)?.data?.[0]?.x)).toBeTruthy();
+  await page.getByLabel('Kind of treatment', { exact: true }).selectOption('drug_compound');
+  await expect(page.locator('#screens [data-count]')).toHaveText('6 of 60 screens match.');
 });
