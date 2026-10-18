@@ -243,6 +243,9 @@ test('/data: kinds of treatment and drug coverage', async ({ page }) => {
   // all cell lines are shown by default; the selects only narrow the view
   await expect(page.locator('#cov-note')).toContainText('Showing 1 drugs and 2 cell lines');
   await expect(page.locator('#cov-lines option')).toHaveCount(1);
+  // the heat map sits in a scrollable box with a fixed cell size
+  await expect(page.getByRole('region', { name: /scrollable/ })).toBeVisible();
+  expect(await page.locator('#c-cov').evaluate((el) => el.style.minWidth)).toBe(`${280 + 2 * 18}px`);
   await expect.poll(() => page.evaluate(() => (document.getElementById('c-kind') as any)?.data?.[0]?.y ?? (document.getElementById('c-kind') as any)?.data?.[0]?.x)).toBeTruthy();
   await page.getByLabel('Kind of treatment', { exact: true }).selectOption('drug_compound');
   await expect(page.locator('#screens [data-count]')).toHaveText('6 of 60 screens match.');
