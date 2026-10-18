@@ -82,6 +82,7 @@ input, select, button { font: inherit; }
 .lookup button, button.primary { min-height: 40px; padding: 0 1rem; background: var(--accent); color: var(--on-accent); border: 0; border-radius: var(--radius); cursor: pointer; font-weight: 600; }
 .lookup button:hover { background: var(--accent-strong); }
 .lookup label, .filters label { position: relative; display: flex; flex-direction: column; gap: .2rem; font-size: .82rem; font-weight: 600; color: var(--muted); min-width: 0; }
+.lookup .field { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
 .lookup .error { flex-basis: 100%; margin: 0; color: var(--warn); }
 .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: .6rem 1rem; align-items: end; margin: var(--space-2) 0 .5rem; }
 .filters button, .pager button { min-height: 40px; padding: 0 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--accent); cursor: pointer; font-weight: 500; }
