@@ -40,6 +40,8 @@ jobs:
         run: python -m unittest discover -s datasets/biogrid-orcs/tests -v
       - name: Cell line context unit tests
         run: python -m unittest discover -s datasets/cell-line-context/tests -v
+      - name: Pathways unit tests
+        run: python -m unittest discover -s datasets/pathways/tests -v
       - uses: actions/setup-node@v7
         with:
           node-version: 22

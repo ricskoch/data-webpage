@@ -11,6 +11,16 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     <button type="submit">Look up</button>
     <p id="form-error" class="error" role="alert" hidden></p>
   </form>
+  <div id="pathway-box" class="explainer" hidden>
+    <h2>Browse by pathway</h2>
+    <p>Pick a Reactome pathway to see its genes and to limit the gene dropdown to them.</p>
+    <div class="lookup">
+      <label>Pathway<br /><input id="pw" autocomplete="off" placeholder="e.g. Apoptosis" /></label>
+      <button type="button" id="pw-clear" hidden>Clear pathway</button>
+    </div>
+    <div id="pw-out" aria-live="polite"></div>
+    <p id="pw-credit"></p>
+  </div>
   <ScoreExplainer />
   <div id="out" aria-live="polite"></div>
 </Base>
@@ -19,6 +29,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
   import { mountCombobox, suggest, exactSymbol } from '../scripts/combobox';
+  import { loadPathways, pathwaysOfGene, genesInCollection, type Pathways, type Pathway } from '../scripts/pathways';
   import { dependencyByMutation, verdict, median as recipeMedian, MIN_LINES, type Comparison } from '../scripts/recipe';
   import { loadLines, loadGene, credit, geneInLine, copyLabel, expressionLabel, type Lines, type LineGene } from '../scripts/context';
 
@@ -133,6 +144,10 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       });
       const ctxCols = lines && gctx;
       const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
+      const inGene = pw ? pathwaysOfGene(pw, key) : [];
+      if (inGene.length) out.querySelector('.stats')!.insertAdjacentHTML('afterend',
+        `<p>Reactome pathways with <span class="gene">${escapeHtml(key)}</span>, most specific first: ${inGene.map((p) =>
+          `<button type="button" class="chip" data-pw="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`).join(' ')}</p>`);
       const stripBox = document.getElementById('strip')!;
       const detail = (r: Row) => {
         const row = (k: string, v: string) => `<dt>${k}</dt><dd>${v}</dd>`;
@@ -214,7 +229,33 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     }
     lookup(symbol);
   };
-  mountCombobox(input, known, go);
+  // Pathways (optional): picking one limits the gene dropdown to its genes; typing any other known symbol still works.
+  let pw: Pathways | null = null, scope: Pathway | null = null;
+  const pwInput = document.getElementById('pw') as HTMLInputElement;
+  const pwOut = document.getElementById('pw-out')!, pwClear = document.getElementById('pw-clear')!;
+  function choosePathway(name: string) {
+    scope = pw?.pathways.find((p) => p.name === name) ?? null;
+    pwClear.hidden = !scope;
+    if (!scope) { pwOut.innerHTML = ''; return; }
+    const inScreens = genesInCollection(scope, known());
+    pwInput.value = scope.name;
+    pwOut.innerHTML = `<p>${inScreens.length} of ${scope.genes.length} genes of this pathway are in the screens; the gene box now suggests only these.
+      Click one to look it up.</p><p>${inScreens.map((g) => `<button type="button" class="chip gene" data-gene="${escapeHtml(g)}">${escapeHtml(g)}</button>`).join(' ')}</p>`;
+  }
+  mountCombobox(input, () => (scope ? genesInCollection(scope, known()) : known()), go);
+  mountCombobox(pwInput, () => pw?.pathways.map((p) => p.name) ?? [], choosePathway);
+  pwClear.addEventListener('click', () => { pwInput.value = ''; choosePathway(''); });
+  document.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-gene], [data-pw]');
+    if (b?.dataset.gene) { input.value = b.dataset.gene; go(b.dataset.gene); }
+    else if (b?.dataset.pw) { choosePathway(b.dataset.pw); document.getElementById('pathway-box')!.scrollIntoView({ block: 'nearest' }); }
+  });
+  loadPathways().then((p) => {
+    if (!p) return;
+    pw = p;
+    document.getElementById('pathway-box')!.hidden = false;
+    document.getElementById('pw-credit')!.innerHTML = `<small>Pathway data: Reactome release ${escapeHtml(p.release)} (<a href="https://reactome.org/license">licence</a>).</small>`;
+  });
   getJSON<Record<string, [string, number]>>('genes.json').then((g) => { genes ??= g; }).catch(() => { /* lookup() reports the load error */ });
   document.getElementById('form')!.addEventListener('submit', (e) => { e.preventDefault(); go(input.value.trim()); });
   const start = new URLSearchParams(location.search).get('g');
