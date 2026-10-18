@@ -1,0 +1,172 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base wide title="Associations · CRISPR Screen Explorer" description="Precomputed: which genes matter more or less in a tissue or in lines with a given driver mutation.">
+  <h1>Associations</h1>
+  <p class="notice"><strong>Prototype.</strong> Computed once for every gene; not yet reviewed by a bioinformatician. A lead to
+    follow up in the <a href="/gene">gene explorer</a>, not a finding. <a href="#method">How these numbers were made</a>.</p>
+  <div class="page-side">
+    <div class="side" role="group" aria-label="Controls">
+      <div class="panel">
+        <h2>Question</h2>
+        <div class="lookup"><label>Compare cell lines by<select id="question"></select></label></div>
+        <p class="caption" id="question-note"></p>
+      </div>
+      <div class="panel">
+        <h2>Which genes count</h2>
+        <div class="lookup">
+          <label>False discovery rate (q) at most<select id="fdr"><option>0.01</option><option selected>0.05</option><option>0.1</option></select></label>
+          <label>Effect at least (essential scale)<select id="effect"><option>0</option><option>0.1</option><option selected>0.2</option><option>0.3</option><option>0.5</option></select></label>
+          <label>Direction<select id="dir"><option value="">Both</option><option value="more">More essential in group A</option><option value="less">Less essential in group A</option></select></label>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Find a gene</h2>
+        <div class="lookup"><label>Gene symbol<input id="hl" autocomplete="off" placeholder="e.g. KRAS" /></label></div>
+        <p class="caption" id="hl-note" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="main-pane">
+      <div id="out" aria-live="polite"><p>Loading…</p></div>
+      <section id="method" class="panel">
+        <h2>How these numbers were made</h2>
+        <p>Each question splits the cell lines into two groups, A and B, for example lung lines against all other tissues, or lines with a
+          KRAS mutation against lines without. Then, for every gene:</p>
+        <ol>
+          <li><strong>One value per cell line.</strong> Take the median of that line's screens on the essential-gene scale (0 = behaves like a
+            non-essential gene, −1 = like a core-essential gene). A line that was screened ten times counts once, like one patient counted once.</li>
+          <li><strong>Effect.</strong> The median of group A minus the median of group B. Negative means the gene is more essential in group A.</li>
+          <li><strong>Test.</strong> A Mann-Whitney test asks whether values in A tend to be lower or higher than in B. It uses ranks, so a few
+            extreme lines do not decide the result. At least 5 lines are needed in each group.</li>
+          <li><strong>Correction for testing many genes.</strong> About 18,000 genes are tested per question, so some will look good by chance (like
+            screening 18,000 wells). The Benjamini-Hochberg method turns each p-value into a q-value, the expected share of false hits among all
+            genes called at that level. "q at most 0.05" means about one call in twenty may be wrong.</li>
+          <li><strong>Left out.</strong> Cell lines flagged as misidentified or contaminated; for mutation questions also lines without mutation calls.</li>
+        </ol>
+        <p><strong>Limits.</strong> Tissue and mutation are tangled (KRAS mutations are common in lung and bowel), so a tissue effect can show
+          up as a mutation effect and the other way round. The questions are corrected one at a time, not against each other. Many screens
+          come from DepMap's own studies, which also produced the mutation data. Treat a hit as a lead to check.
+          <span id="release"></span></p>
+        <p><small>Method written up in <code>datasets/associations/README.md</code>; the statistics are checked against SciPy in the test suite.</small></p>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { getAssoc, callOf, topHits, type Index, type Result, type Question, type Call } from '../scripts/associations';
+  import { draw, palette } from '../scripts/charts';
+  import { mountCombobox, exactSymbol } from '../scripts/combobox';
+  import { escapeHtml, fmt } from '../scripts/data';
+
+  const out = document.getElementById('out')!;
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const sci = (x: number | null) => (x === null ? '–' : x < 0.001 ? x.toExponential(1) : x.toFixed(3));
+  let index: Index, q: Question, result: Result, highlight: string | null = null;
+  const cache = new Map<string, Result>();
+
+  function volcano(el: HTMLElement, fdr: number, minEffect: number) {
+    const p = palette(), names = index.genes;
+    const groups: Record<Call, { x: number[]; y: number[]; text: string[]; gene: string[] }> = {
+      more: { x: [], y: [], text: [], gene: [] }, less: { x: [], y: [], text: [], gene: [] }, ns: { x: [], y: [], text: [], gene: [] } };
+    result.g.forEach((gi, i) => {
+      const qv = result.q[i];
+      if (qv === null) return;
+      const c = callOf(result.d[i], qv, fdr, minEffect), t = groups[c];
+      t.x.push(result.d[i]); t.y.push(-Math.log10(Math.max(qv, 1e-300)));
+      t.text.push(`${names[gi]}<br>effect ${fmt(result.d[i])}, q ${sci(qv)}`); t.gene.push(names[gi]);
+    });
+    const trace = (c: Call, name: string, color: string, type: string) => ({ type, mode: 'markers', name, x: groups[c].x, y: groups[c].y,
+      text: groups[c].text, customdata: groups[c].gene, hoverinfo: 'text', marker: { color, size: c === 'ns' ? 4 : 6, opacity: c === 'ns' ? 0.35 : 0.85 } });
+    const build = (type: string) => {
+      const traces: any[] = [trace('ns', 'not called', p.muted, type), trace('more', `more essential in ${q.a}`, p.series[0], type),
+        trace('less', `less essential in ${q.a}`, p.series[1], type)];
+      const hi = highlight ? result.g.findIndex((gi) => names[gi] === highlight) : -1;
+      if (hi >= 0 && result.q[hi] !== null) traces.push({ type: 'scatter', mode: 'markers+text', name: highlight, x: [result.d[hi]],
+        y: [-Math.log10(Math.max(result.q[hi]!, 1e-300))], text: [highlight], textposition: 'top center', hoverinfo: 'skip',
+        marker: { size: 13, color: 'rgba(0,0,0,0)', line: { color: p.text, width: 2.5 } } });
+      return traces;
+    };
+    const over = { height: 460, showlegend: true, legend: { orientation: 'h', y: -0.2 }, margin: { l: 56, r: 16, t: 8, b: 90 },
+      xaxis: { title: { text: `Effect: median in ${q.a} minus median in ${q.b} (negative: more essential in ${q.a})` }, zeroline: true },
+      yaxis: { title: { text: '−log10 q (higher: stronger evidence)' } },
+      shapes: [{ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: -Math.log10(fdr), y1: -Math.log10(fdr), line: { color: p.border, dash: 'dot', width: 1 } }] };
+    // WebGL keeps 18,000 points fast; if the browser has none, fall back to plain SVG points.
+    return draw(el, build('scattergl'), over).catch(() => draw(el, build('scatter'), over)).then(() => {
+      const gd = el as any;
+      gd.removeAllListeners?.('plotly_click');
+      gd.on('plotly_click', (ev: any) => { const g = ev.points?.[0]?.customdata; if (g) location.href = `/gene?g=${encodeURIComponent(g)}`; });
+    });
+  }
+
+  function render() {
+    const fdr = Number($<HTMLSelectElement>('fdr').value), minEffect = Number($<HTMLSelectElement>('effect').value);
+    const dir = ($<HTMLSelectElement>('dir').value || undefined) as Call | undefined;
+    const all = topHits(result, index.genes, fdr, minEffect, Infinity);
+    const more = all.filter((h) => h.call === 'more').length, less = all.length - more;
+    const hits = dir ? all.filter((h) => h.call === dir) : all;
+    $('question-note').textContent = `A: ${q.a} (${q.lines_a} lines). B: ${q.b} (${q.lines_b} lines).`;
+    out.innerHTML = `<h2>${escapeHtml(q.label)}</h2>
+      <ul class="stats">
+        <li><b>${q.tested.toLocaleString('en')}</b><span>genes tested</span></li>
+        <li><b>${more.toLocaleString('en')}</b><span>more essential in ${escapeHtml(q.a)}</span></li>
+        <li><b>${less.toLocaleString('en')}</b><span>less essential in ${escapeHtml(q.a)}</span></li>
+      </ul>
+      <figure><div id="volcano" class="chart" role="group" aria-label="Volcano plot: effect against evidence for every gene tested. The table below lists the strongest genes."></div>
+        <figcaption>Fig. 1. One dot per gene. Left: more essential in ${escapeHtml(q.a)}; right: less. Higher means stronger evidence. Coloured dots pass the
+          q and effect limits set at the left; click a dot to open the gene.</figcaption></figure>
+      <div class="table-box" tabindex="0" role="region" aria-label="Strongest genes"><table>
+        <caption>Table 1. The ${Math.min(hits.length, 50)} strongest of ${hits.length.toLocaleString('en')} genes called, smallest q first.</caption>
+        <thead><tr><th scope="col">Gene</th><th scope="col" class="num">Effect</th><th scope="col" class="num">p</th><th scope="col" class="num">q</th>
+          <th scope="col" class="num">Lines in A</th><th scope="col" class="num">Lines in B</th><th scope="col">Meaning</th></tr></thead>
+        <tbody>${hits.slice(0, 50).map((h) => `<tr><td><a class="gene" href="/gene?g=${encodeURIComponent(h.gene)}">${escapeHtml(h.gene)}</a></td>
+          <td class="num">${fmt(h.d)}</td><td class="num">${sci(h.p)}</td><td class="num">${sci(h.q)}</td><td class="num">${h.na}</td><td class="num">${h.nb}</td>
+          <td>${h.call === 'more' ? `more essential in ${escapeHtml(q.a)}` : `less essential in ${escapeHtml(q.a)}`}</td></tr>`).join('')}</tbody></table></div>`;
+    volcano($('volcano'), fdr, minEffect).catch((err) => { $('volcano').textContent = `Could not draw the plot: ${err}`; });
+  }
+
+  async function choose(id: string) {
+    q = index.questions.find((x) => x.id === id)!;
+    out.innerHTML = '<p>Loading…</p>';
+    result = cache.get(q.file) ?? (await getAssoc<Result>(q.file));
+    cache.set(q.file, result);
+    history.replaceState(null, '', `?q=${encodeURIComponent(id)}`);
+    render();
+  }
+
+  function showGene(symbol: string) {
+    const note = $('hl-note');
+    const g = exactSymbol(index.genes, symbol);
+    highlight = g ?? null;
+    if (!symbol.trim()) note.textContent = '';
+    else if (!g) note.textContent = `"${symbol}" is not among the genes tested.`;
+    else {
+      const i = result.g.findIndex((gi) => index.genes[gi] === g);
+      note.textContent = i < 0 || result.q[i] === null ? `${g} has too few lines with data for this question.`
+        : `${g}: effect ${fmt(result.d[i])}, q ${sci(result.q[i])} (${result.na[i]} lines in A, ${result.nb[i]} in B).`;
+    }
+    render();
+  }
+
+  async function main() {
+    try {
+      index = await getAssoc<Index>('index.json');
+    } catch (err) {
+      out.innerHTML = `<p class="notice"><strong>Not published yet.</strong> The precomputed associations have not been uploaded to the data store (${escapeHtml(String(err))}).</p>`;
+      return;
+    }
+    const opts = (kind: string) => index.questions.filter((x) => x.id.startsWith(kind)).map((x) => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.label)}</option>`).join('');
+    $('question').innerHTML = `<optgroup label="Tissue">${opts('tissue:')}</optgroup><optgroup label="Driver mutation">${opts('mut:')}</optgroup>`;
+    $('release').textContent = index.release ? `Cell line data: DepMap ${index.release}.` : '';
+    const start = new URLSearchParams(location.search).get('q');
+    const first = index.questions.find((x) => x.id === start)?.id ?? index.questions.find((x) => x.id === 'mut:KRAS')?.id ?? index.questions[0]?.id;
+    if (!first) { out.innerHTML = '<p>No questions were computed.</p>'; return; }
+    $<HTMLSelectElement>('question').value = first;
+    await choose(first);
+    $<HTMLSelectElement>('question').addEventListener('change', async (e) => { await choose((e.target as HTMLSelectElement).value); if (highlight) showGene(highlight); });
+    for (const id of ['fdr', 'effect', 'dir']) $(id).addEventListener('change', render);
+    mountCombobox($<HTMLInputElement>('hl'), () => index.genes, showGene);
+    $<HTMLInputElement>('hl').addEventListener('change', (e) => showGene((e.target as HTMLInputElement).value));
+  }
+  main();
+</script>
