@@ -12,7 +12,7 @@ export interface Screen {
   /** Condition as the source names it (drug, virus, toxin...), null for untreated screens. */
   treatment?: string | null; treatment_dose?: string | null; treatment_duration?: string | null; treatment_category?: string | null;
   /** Display names from the export (cell line like MDAMB231, drug like Olaparib); absent in older exports. */
-  cell_line_display?: string; treatment_display?: string | null;
+  cell_line_display?: string | null; treatment_display?: string | null;
   /** Source labels, kept when the display names replace cell_line_label and treatment on load. */
   cell_line_raw?: string; treatment_raw?: string | null;
   /** Drug page: native name and column of the score the per-screen vector is built from; has_z = vector published. */
