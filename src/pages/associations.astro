@@ -161,7 +161,7 @@ import Base from '../layouts/Base.astro';
       return;
     }
     const opts = (kind: string) => index.questions.filter((x) => x.id.startsWith(kind)).map((x) => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.label)}</option>`).join('');
-    $('question').innerHTML = `<optgroup label="Tissue">${opts('tissue:')}</optgroup><optgroup label="Driver mutation">${opts('mut:')}</optgroup>`;
+    $('question').innerHTML = `<optgroup label="Tissue">${opts('tissue:')}</optgroup><optgroup label="Driver mutation (any protein-altering)">${opts('mut:')}</optgroup><optgroup label="Loss-of-function mutation">${opts('mutlof:')}</optgroup><optgroup label="Hotspot mutation (gain-of-function-like)">${opts('mutgof:')}</optgroup>`;
     $('release').textContent = index.release ? `Cell line data: DepMap ${index.release}.` : '';
     const start = new URLSearchParams(location.search).get('q');
     const first = index.questions.find((x) => x.id === start)?.id ?? index.questions.find((x) => x.id === 'mut:KRAS')?.id ?? index.questions[0]?.id;

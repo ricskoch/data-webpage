@@ -4,7 +4,9 @@ import AxeBuilder from '@axe-core/playwright';
 // /associations with a small fake result in place of the R2 bucket (F23).
 const index = { release: '24Q4', min_lines: 5, fdr: 0.05, genes: ['EGFR', 'KRAS', 'MYC', 'TP53'], questions: [
   { id: 'tissue:Lung', label: 'Lung vs all other tissues', a: 'Lung', b: 'all other tissues', file: 'f/000.json', lines_a: 40, lines_b: 300, tested: 4, significant: 3 },
-  { id: 'mut:KRAS', label: 'KRAS-mutant vs wild-type lines', a: 'KRAS-mutant', b: 'wild-type', file: 'f/001.json', lines_a: 60, lines_b: 280, tested: 4, significant: 1 }] };
+  { id: 'mut:KRAS', label: 'KRAS-mutant vs wild-type lines', a: 'KRAS-mutant', b: 'wild-type', file: 'f/001.json', lines_a: 60, lines_b: 280, tested: 4, significant: 1 },
+  { id: 'mutlof:TP53', label: 'TP53 loss-of-function mutation vs wild-type lines', a: 'TP53 loss of function', b: 'wild-type', file: 'f/002.json', lines_a: 30, lines_b: 280, tested: 4, significant: 1 },
+  { id: 'mutgof:KRAS', label: 'KRAS hotspot mutation vs wild-type lines', a: 'KRAS hotspot', b: 'wild-type', file: 'f/003.json', lines_a: 50, lines_b: 280, tested: 4, significant: 1 }] };
 const kras = { g: [0, 1, 2, 3], d: [-0.1, -0.9, 0.05, 0.4], p: [0.3, 1e-9, 0.7, 1e-4], q: [0.5, 1e-7, 0.8, 0.01], na: [60, 60, 60, 58], nb: [280, 280, 280, 275] };
 const lung = { ...kras, d: [-0.6, -0.1, 0.3, 0.5] };
 
@@ -72,4 +74,12 @@ test('/associations: the page with data is accessible', async ({ page }) => {
   await expect(page.locator('tbody tr').first()).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
+});
+
+test('/associations: loss-of-function and hotspot questions are in the question menu', async ({ page }) => {
+  await fakeAssoc(page);
+  await page.goto('/associations');
+  await expect(page.locator('#question optgroup')).toHaveCount(4);
+  await expect(page.locator('#question option')).toHaveText([
+    'Lung vs all other tissues', 'KRAS-mutant vs wild-type lines', 'TP53 loss-of-function mutation vs wild-type lines', 'KRAS hotspot mutation vs wild-type lines']);
 });
