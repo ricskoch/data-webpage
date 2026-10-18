@@ -21,6 +21,7 @@ import pandas as pd
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import drug_export  # noqa: E402
 import drug_names  # noqa: E402
+import display_names  # noqa: E402
 import pairing  # noqa: E402
 import treatment_class  # noqa: E402
 
@@ -61,18 +62,35 @@ def add_treatment(screens, conditions):
     return out.where(out.notna(), None)
 
 
+def _known_compounds(screens):
+    on_drug = screens[screens["experimental_setup"].eq(pairing.DRUG_SETUP) & screens["treatment"].notna()]
+    return {c for label in on_drug["treatment"].unique() for c in drug_names.split_label(label)["components"]}
+
+
+def _curated():
+    return drug_names.load_curated(pathlib.Path(__file__).resolve().parent / "drugs.yaml")
+
+
 def add_treatment_category(screens):
     """treatment_category: what kind of thing the treatment label is (treatment_classes.yaml).
 
     A name on a "Drug Exposure" screen counts as a compound unless a rule says otherwise (3D culture, hypoxia...).
     """
-    rules = treatment_class.load_rules()
-    curated = drug_names.load_curated(pathlib.Path(__file__).resolve().parent / "drugs.yaml")
-    on_drug = screens[screens["experimental_setup"].eq(pairing.DRUG_SETUP) & screens["treatment"].notna()]
-    known = {c for label in on_drug["treatment"].unique() for c in drug_names.split_label(label)["components"]}
+    rules, curated, known = treatment_class.load_rules(), _curated(), _known_compounds(screens)
     out = screens.copy()
     out["treatment_category"] = [treatment_class.classify(t if pd.notna(t) else None, rules, known, curated)
                                  for t in out["treatment"]]
+    return out
+
+
+def add_display_names(screens):
+    """cell_line_display and treatment_display: one spelling for lists (display_names.py). Raw labels stay as they are."""
+    rules, curated, known = treatment_class.load_rules(), _curated(), _known_compounds(screens)
+    out = screens.copy()
+    out["cell_line_display"] = pd.Series([display_names.cell_line(c if pd.notna(c) else None)
+                                          for c in out["cell_line_label"]], index=out.index, dtype=object)
+    out["treatment_display"] = pd.Series([display_names.treatment(t if pd.notna(t) else None, rules, known, curated)
+                                          for t in out["treatment"]], index=out.index, dtype=object)
     return out
 
 
@@ -104,6 +122,7 @@ def summary(screens):
             "top_cell_lines": top("cell_line_label"), "top_phenotypes": top("phenotype"),
             "top_treatments": top("treatment"),
             "by_treatment_category": screens["treatment_category"].value_counts().to_dict(),
+            "cell_line_display_collisions": display_names.collisions(screens["cell_line_label"].dropna()),
             "by_year": {int(k): int(v) for k, v in screens["year"].dropna().value_counts().sort_index().items()}}
 
 
@@ -155,6 +174,7 @@ def main(work):
     screens = screen_table(pd.read_parquet(out / "screens.parquet"), pd.read_parquet(out / "studies.parquet"), results)
     screens = add_treatment(screens, pd.read_parquet(out / "conditions.parquet"))
     screens = add_treatment_category(screens)
+    screens = add_display_names(screens)
     candidates = pairing.control_candidates(screens)
     plottable = drug_export.plottable_ids(screens, candidates)
     screens = add_primary_score(screens, pd.read_parquet(out / "score_defs.parquet"), plottable)

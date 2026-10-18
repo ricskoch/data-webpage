@@ -9,7 +9,7 @@ export interface Screen {
   normalization_status: string; direction: string | null; direction_evidence: string | null;
   known_biology_pass: boolean | null; rows: number | null; hits: number | null;
   /** Condition as the source names it (drug, virus, toxin...), null for untreated screens. */
-  treatment?: string | null; treatment_dose?: string | null; treatment_duration?: string | null; treatment_category?: string | null;
+  treatment?: string | null; treatment_dose?: string | null; treatment_duration?: string | null; treatment_category?: string | null; cell_line_display?: string | null; treatment_display?: string | null;
   /** Drug page: native name and column of the score the per-screen vector is built from; has_z = vector published. */
   primary_score_name?: string | null; primary_score_position?: number | null; has_z?: boolean;
 }
