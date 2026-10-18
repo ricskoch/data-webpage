@@ -63,6 +63,14 @@ class DrugNames(unittest.TestCase):
         self.assertEqual(len([u for u in calls if "name/Olaparib/cids" in u]), 1)
         self.assertEqual(drug_names.summary(m), {"mapped": 2, "review": 1, "unmapped": 0, "background_only": 1})
 
+    def test_parallel_lookup_gives_the_same_mapping_and_reports_progress(self):
+        labels = ["Olaparib", "Mutation: BRCA2 KO | Olaparib", "Olaparib + A159"]
+        seen = []
+        serial = drug_names.build_mapping(labels, fake(OLAPARIB))
+        par = drug_names.build_mapping(labels, fake(OLAPARIB), workers=4, progress=lambda d, n, name: seen.append((d, n)))
+        self.assertEqual(par, serial)
+        self.assertEqual(seen, [(1, 2), (2, 2)])
+
 
 if __name__ == "__main__":
     unittest.main()
