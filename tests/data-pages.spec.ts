@@ -54,6 +54,8 @@ test('/gene: results start most depleted first and can be filtered to hits', asy
   await page.goto('/gene?g=tp53');
   await expect(page.locator('#results [data-count]')).toHaveText('60 of 60 screen results match.');
   await expect(page.locator('#results tbody tr').first().locator('td').nth(5)).toHaveText('0.00');
+  await expect(page.locator('#drugs')).toContainText('Olaparib');
+  await expect(page.locator('#drugs tbody tr')).toHaveCount(1);
   await page.getByLabel('Treatment', { exact: true }).selectOption('Olaparib');
   await expect(page.locator('#results [data-count]')).toHaveText('6 of 60 screen results match.');
   await page.getByRole('button', { name: 'Clear filters' }).click();
@@ -111,6 +113,7 @@ test('/gene: the gene\'s own mutation, expression and copy number in each screen
   await expect(row.locator('td').nth(-2)).toHaveText('0.4 off');
   await expect(row.locator('td').nth(-1)).toHaveText('0.10 deep loss');
   await page.getByLabel('Gene', { exact: true }).fill('tp53');
+  await page.getByLabel('Gene', { exact: true }).press('Escape'); // dismiss the gene dropdown, which would cover the button
   await page.getByRole('button', { name: 'Compare' }).click();
   await expect(page.locator('#recipe-out')).toContainText('Not enough lines to compare');
   await expect(page.locator('#recipe-out')).toContainText('TP53-mutant lines: 1; wild-type lines: 1');
@@ -119,6 +122,68 @@ test('/gene: the gene\'s own mutation, expression and copy number in each screen
   await page.locator('#tissue').selectOption('Myeloid');
   await page.getByRole('button', { name: 'Compare' }).click();
   await expect(page.locator('#recipe-out')).toContainText('Myeloid lines: 1; all other tissues lines: 1');
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+  expect(results.violations).toEqual([]);
+});
+
+// Desktop workspace (interactive layout): gene dropdown and validation, row selection linked to the plot.
+test('/gene: dropdown suggests known genes and unknown symbols are rejected', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/gene');
+  await expect(async () => {
+    await page.getByLabel('Gene symbol').fill('tp');
+    await expect(page.getByRole('option', { name: 'TP53' })).toBeVisible({ timeout: 500 });
+  }).toPass();
+  await page.getByRole('option', { name: 'TP53' }).click();
+  await expect(page.locator('#results [data-count]')).toHaveText('60 of 60 screen results match.');
+  await page.getByLabel('Gene symbol').fill('ZZZ9');
+  await page.getByLabel('Gene symbol').press('Escape');
+  await page.getByRole('button', { name: 'Look up' }).click();
+  await expect(page.locator('#form-error')).toContainText('not a gene in this collection');
+});
+
+test('/gene: selecting a row shows its details and marks its dot in the plot; the plot follows the filters', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/gene?g=TP53');
+  await expect(page.locator('#strip circle')).toHaveCount(60);
+  await page.locator('#results tbody tr').nth(2).click();
+  await expect(page.locator('[data-detail] h3')).toHaveText('Author 2 (2020)');
+  await expect(page.locator('#strip circle.picked')).toHaveCount(1);
+  await page.getByLabel('Treatment', { exact: true }).selectOption('Olaparib');
+  await expect(page.locator('#strip circle')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await page.locator('#strip circle').nth(10).dispatchEvent('click');
+  await expect(page.locator('#strip circle.picked')).toHaveCount(1);
+  await expect(page.locator('#results tr[aria-current="true"]')).toHaveCount(1);
+});
+
+test('/data: arrow keys move the selection and the detail panel follows', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/data');
+  await page.locator('#screens tbody tr').first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-detail] h3')).toHaveText('Author 0 (2020)');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-detail] h3')).toHaveText('Author 1 (2020)');
+  await page.keyboard.press('/');
+  await expect(page.locator('#screens [data-search]')).toBeFocused();
+});
+
+// Reactome pathway picker (optional data): limits the gene dropdown and links genes to pathways.
+test('/gene: pathway picker limits the gene dropdown and offers its genes', async ({ page }) => {
+  await fakeData(page);
+  await page.route('**/pathways/**', (route) => route.fulfill({ json: { release: '95', pathways: [
+    { id: 'R-HSA-1', name: 'Apoptosis', genes: ['TP53', 'BAX'] },
+    { id: 'R-HSA-2', name: 'Cell cycle', genes: ['TP53', 'CDK1'] },
+  ] } }));
+  await page.goto('/gene');
+  await expect(page.getByRole('heading', { name: 'Browse by pathway' })).toBeVisible();
+  await page.getByLabel('Pathway', { exact: true }).fill('apop');
+  await page.getByRole('option', { name: 'Apoptosis' }).click();
+  await expect(page.locator('#pw-out')).toContainText('1 of 2 genes of this pathway are in the screens');
+  await page.locator('#pw-out').getByRole('button', { name: 'TP53' }).click();
+  await expect(page.locator('#results [data-count]')).toHaveText('60 of 60 screen results match.');
+  await expect(page.getByRole('button', { name: 'Cell cycle' })).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });

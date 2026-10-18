@@ -9,6 +9,8 @@ export interface Screen {
   known_biology_pass: boolean | null; rows: number | null; hits: number | null;
   /** Condition as the source names it (drug, virus, toxin...), null for untreated screens. */
   treatment?: string | null; treatment_dose?: string | null; treatment_duration?: string | null;
+  /** Drug page: native name and column of the score the per-screen vector is built from; has_z = vector published. */
+  primary_score_name?: string | null; primary_score_position?: number | null; has_z?: boolean;
 }
 
 /** "Olaparib (5.0 µM)", "Olaparib", or null when the screen names no condition. */

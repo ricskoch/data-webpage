@@ -11,6 +11,17 @@ import export_site  # noqa: E402
 
 
 class ExportSite(unittest.TestCase):
+    def test_add_primary_score_joins_object_position_to_integer_position(self):
+        # after add_treatment the screens table is object-typed, score_defs.position is int64 (failed on real data)
+        screens = pd.DataFrame({"screen_id": ["a", "b"], "primary_score_position": [2.0, np.nan]}).astype(object)
+        screens = screens.where(screens.notna(), None)
+        defs = pd.DataFrame({"screen_id": ["a", "a", "b"], "position": [1, 2, 1],
+                             "native_name": ["x", "DrugZ", "y"]})
+        out = export_site.add_primary_score(screens, defs, ["a"])
+        self.assertEqual(out["primary_score_name"].tolist(), ["DrugZ", None])
+        self.assertEqual(out["has_z"].tolist(), [True, False])
+        self.assertEqual(out["primary_score_position"].tolist(), [2.0, None])
+
     def test_shard_is_stable_and_in_range(self):
         self.assertEqual(export_site.shard_of("entrez:7157"), export_site.shard_of("entrez:7157"))
         self.assertTrue(0 <= export_site.shard_of("orcs:77294U") < export_site.N_SHARDS)
@@ -44,6 +55,12 @@ class ExportSite(unittest.TestCase):
                              "duration": [None, None]})
         with self.assertRaises(ValueError):
             export_site.add_treatment(screens, cond)
+
+    def test_drug_pairs_keep_rank_order_and_unmatched_screens(self):
+        c = pd.DataFrame({"screen_id": ["d1", "d1", "d2"], "control_screen_id": ["c2", "c1", None],
+                          "match": ["same_study_library", "same_cell_line", "none"], "rank": [1, 2, None]})
+        self.assertEqual(export_site.drug_pairs(c),
+                         {"d1": [["c2", "same_study_library"], ["c1", "same_cell_line"]], "d2": []})
 
 
 if __name__ == "__main__":

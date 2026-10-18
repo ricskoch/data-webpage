@@ -4,13 +4,16 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description: string;
+  /** Desktop workspace pages: use the full window width (style guide: layout). */
+  wide?: boolean;
 }
-const { title, description } = Astro.props;
+const { title, description, wide = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const nav = [
   { href: '/', label: 'Home' },
   { href: '/data', label: 'Data' },
   { href: '/gene', label: 'Gene lookup' },
+  { href: '/drug', label: 'Drug effects' },
   { href: '/about', label: 'About' },
   { href: '/data-policy', label: 'Data policy' },
 ];
@@ -25,7 +28,7 @@ const nav = [
     <link rel="preload" href="/fonts/source-serif-4-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="/icons/cas9.svg" type="image/svg+xml" />
   </head>
-  <body>
+  <body class={wide ? 'app' : undefined}>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site">
       <div class="wrap">

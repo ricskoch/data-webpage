@@ -1,0 +1,54 @@
+# Reactome pathways for the gene picker: tests and a build on PRs that change the pipeline; by hand, it can also upload
+# the result to the R2 staging bucket (same bucket and secrets as the other staging publishers). Staging is not a data release.
+name: Reactome pathways
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Upload to the R2 staging bucket after the build
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - datasets/pathways/**
+      - .github/workflows/pathways.yml
+permissions:
+  contents: read
+concurrency:
+  group: pathways-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  R2_BUCKET: data-webpage-staging
+  PREFIX: pathways/0.1.0-staging
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Unit tests
+        run: python -m unittest discover -s datasets/pathways/tests -v
+      - name: Download and build
+        run: python -I datasets/pathways/build.py "$RUNNER_TEMP/pw"
+      - name: Report to job summary
+        run: cat "$RUNNER_TEMP/pw/out/report.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pathways-report
+          path: ${{ runner.temp }}/pw/out/*
+          retention-days: 30
+      - name: Upload to R2
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          gzip -9 -n "$RUNNER_TEMP/pw/site/pathways.json" && mv "$RUNNER_TEMP/pw/site/pathways.json.gz" "$RUNNER_TEMP/pw/site/pathways.json"
+          aws s3 cp "$RUNNER_TEMP/pw/site/pathways.json" "s3://$R2_BUCKET/$PREFIX/site/pathways.json" --endpoint-url "$ENDPOINT" \
+            --content-type application/json --content-encoding gzip --cache-control "public, max-age=3600" --only-show-errors
+          aws s3 cp "$RUNNER_TEMP/pw/out/report.md" "s3://$R2_BUCKET/$PREFIX/report.md" --endpoint-url "$ENDPOINT" --only-show-errors
