@@ -58,6 +58,11 @@ class TreatmentClass(unittest.TestCase):
     def test_virus_with_pretreatment_stays_a_virus_screen(self):
         self.assertEqual(cat("Virus: SARS-CoV-2 (Alpha variant)|IFN pretreatment (IFN-\u03b12a, 1pM)"), "biological_agent")
 
+    def test_curated_kind_beats_the_word_rules(self):
+        curated = {"Weird medium": {"kind": "drug_compound"}}
+        self.assertEqual(treatment_class.classify("Weird medium", RULES, curated=curated), "drug_compound")
+        self.assertEqual(cat("Weird medium"), "condition_change")
+
     def test_unknown_stays_unclassified_not_guessed(self):
         self.assertEqual(cat("Olaparib"), "unclassified")
 
