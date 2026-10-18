@@ -224,6 +224,19 @@ test('/gene: precomputed associations of the gene can be run as a workflow', asy
   await expect(page.locator('#by')).toHaveValue('mutation');
 });
 
+test('/gene: ?by=mutclass runs the three-group view (wild-type, loss of function, hotspot)', async ({ page }) => {
+  await fakeData(page);
+  await fakeContext(page);
+  await page.goto('/gene?g=TP53&by=mutclass&y=TP53');
+  await expect(page.locator('#workflow-out')).toContainText('TP53 wild-type: 1 lines');
+  await expect(page.locator('#workflow-out')).toContainText('TP53 loss of function: 1 lines');
+  await expect(page.locator('#workflow-out')).toContainText('TP53 hotspot: 0 lines');
+  await expect(page.locator('#workflow-out tbody tr')).toHaveCount(3);
+  await expect(page.locator('#workflow-out tbody tr').first()).toContainText('too few lines');
+  await expect.poll(() => page.evaluate(() => (document.getElementById('group-plot') as any)?.data?.map((t: any) => t.name))).toEqual(
+    ['TP53 wild-type', 'TP53 loss of function', 'TP53 hotspot']);
+});
+
 test('/gene: ?by=tissue&t= runs the tissue workflow (links from the associations page)', async ({ page }) => {
   await fakeData(page);
   await fakeContext(page);

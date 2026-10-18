@@ -3,7 +3,7 @@
 // Lines in neither group, and lines Cellosaurus flags as misidentified or contaminated, are left out.
 import { copyLabel, type GeneContext, type Lines } from './context.ts';
 
-export type GroupKind = 'mutation' | 'mutlof' | 'mutgof' | 'expression' | 'copy' | 'deeploss' | 'gain' | 'wgd' | 'tissue';
+export type GroupKind = 'mutation' | 'mutlof' | 'mutgof' | 'mutclass' | 'expression' | 'copy' | 'deeploss' | 'gain' | 'wgd' | 'tissue';
 export interface Grouping { group: Set<number>; include: (line: number) => boolean; a: string; b: string }
 
 /** Expression bands match expressionLabel: off is log2(TPM+1) < 1, expressed is 3 or more (medium or high). */
@@ -11,10 +11,10 @@ export const OFF_BELOW = 1;
 export const EXPRESSED_FROM = 3;
 
 export const KIND_LABELS: Record<GroupKind, string> = {
-  mutation: 'a mutation in a gene', mutlof: 'a loss-of-function mutation in a gene', mutgof: 'a hotspot (gain-of-function-like) mutation in a gene', expression: 'a gene being switched off', copy: 'a gene losing copies', deeploss: 'a gene lost almost completely', gain: 'a gene gaining copies',
+  mutation: 'a mutation in a gene', mutlof: 'a loss-of-function mutation in a gene', mutgof: 'a hotspot (gain-of-function-like) mutation in a gene', mutclass: 'mutation class in a gene: wild-type, loss of function, hotspot (three groups)', expression: 'a gene being switched off', copy: 'a gene losing copies', deeploss: 'a gene lost almost completely', gain: 'a gene gaining copies',
   wgd: 'whole-genome doubling', tissue: 'tissue',
 };
-export const NEEDS_GENE: GroupKind[] = ['mutation', 'mutlof', 'mutgof', 'expression', 'copy', 'deeploss', 'gain'];
+export const NEEDS_GENE: GroupKind[] = ['mutation', 'mutlof', 'mutgof', 'mutclass', 'expression', 'copy', 'deeploss', 'gain'];
 
 export function makeGrouping(kind: GroupKind, lines: Lines, y: string, yctx?: GeneContext, tissue?: string): Grouping {
   const all = lines.lines.map((_, i) => i);
@@ -32,6 +32,8 @@ export function makeGrouping(kind: GroupKind, lines: Lines, y: string, yctx?: Ge
       return { group: pick(own), a: kind === 'mutlof' ? `${y} loss of function` : `${y} hotspot mutation`, b: 'wild-type',
         include: (l) => fine(l) && lines.lines[l].mutation_calls !== false && (own(l) || !any.has(l)) };
     }
+    case 'mutclass':
+      throw new Error('mutclass has three groups: use mutationClasses');
     case 'expression': {
       const e = (l: number) => yctx?.e[l] ?? null;
       return { group: pick((l) => e(l) !== null && e(l)! < OFF_BELOW), a: `${y}-off`, b: `${y}-expressed`,
@@ -61,4 +63,14 @@ export function makeGrouping(kind: GroupKind, lines: Lines, y: string, yctx?: Ge
       return { group: pick((l) => lines.lines[l].lineage === tissue), a: `${tissue}`, b: 'all other tissues',
         include: (l) => fine(l) && !!lines.lines[l].lineage };
   }
+}
+
+/** Three disjoint groups of lines for one gene: no protein-altering mutation, loss of function only, hotspot only (same classes as the
+ *  precomputed associations). Lines with both classes, flagged lines and lines without mutation calls are in none of them. */
+export function mutationClasses(lines: Lines, yctx?: GeneContext): { wild: Set<number>; lof: Set<number>; hot: Set<number> } {
+  const lof = new Set<number>(), hot = new Set<number>(), any = new Set<number>();
+  for (const [l, , isLof, isHot] of yctx?.m ?? []) { any.add(l); if (isLof) lof.add(l); else if (isHot) hot.add(l); }
+  const ok = (l: number) => !lines.lines[l].problematic && lines.lines[l].mutation_calls !== false;
+  const keep = (own: Set<number>, other: Set<number>) => new Set([...own].filter((l) => ok(l) && !other.has(l)));
+  return { wild: new Set(lines.lines.map((_, i) => i).filter((l) => ok(l) && !any.has(l))), lof: keep(lof, hot), hot: keep(hot, lof) };
 }
