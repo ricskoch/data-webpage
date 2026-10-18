@@ -36,17 +36,17 @@ export function topHits(r: Result, genes: string[], fdr: number, minEffect: numb
 /** The precomputed calls of one gene: [question number, effect, q], strongest first. */
 export interface ByGene { questions: string[]; fdr: number; min_effect: number; genes: Record<string, [number, number, number][]> }
 
-export type WorkflowSpec = { kind: 'mutation'; gene: string } | { kind: 'tissue'; tissue: string };
+export type WorkflowSpec = { kind: 'mutation' | 'mutlof' | 'mutgof'; gene: string } | { kind: 'tissue'; tissue: string };
 
-/** The biological workflow on /gene that asks the same question as a precomputed one (ids are `mut:GENE` or `tissue:NAME`). */
+/** The biological workflow on /gene that asks the same question as a precomputed one (ids are `mut:GENE`, `mutlof:GENE`, `mutgof:GENE` or `tissue:NAME`). */
 export function workflowOf(id: string): WorkflowSpec | null {
   const [kind, ...rest] = id.split(':'), name = rest.join(':');
   if (!name) return null;
-  return kind === 'mut' ? { kind: 'mutation', gene: name } : kind === 'tissue' ? { kind: 'tissue', tissue: name } : null;
+  return kind === 'mut' ? { kind: 'mutation', gene: name } : kind === 'mutlof' ? { kind: 'mutlof', gene: name } : kind === 'mutgof' ? { kind: 'mutgof', gene: name } : kind === 'tissue' ? { kind: 'tissue', tissue: name } : null;
 }
 
 /** Link to the gene explorer with the matching workflow already run, e.g. /gene?g=EGFR&by=mutation&y=KRAS. */
 export function geneLink(gene: string, questionId: string): string {
   const w = workflowOf(questionId), g = `/gene?g=${encodeURIComponent(gene)}`;
-  return !w ? g : w.kind === 'mutation' ? `${g}&by=mutation&y=${encodeURIComponent(w.gene)}` : `${g}&by=tissue&t=${encodeURIComponent(w.tissue)}`;
+  return !w ? g : w.kind !== 'tissue' ? `${g}&by=${w.kind}&y=${encodeURIComponent(w.gene)}` : `${g}&by=tissue&t=${encodeURIComponent(w.tissue)}`;
 }

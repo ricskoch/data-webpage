@@ -62,3 +62,17 @@ test('whole-genome doubling and tissue splits', () => {
   expect(included(t)).toEqual([0, 1, 2]);  // no tissue (4) and flagged (3) are out
   expect(t.a).toBe('Lung');
 });
+
+test('loss-of-function and hotspot splits: own class against lines with no mutation; the other class is left out', () => {
+  // line 0 hotspot only, line 1 loss of function only, line 4 both classes; 2 has no mutation calls, 3 is flagged
+  const ctx: GeneContext = { e: [], c: [], m: [[0, 'p.G12D', 0, 1], [1, 'p.R175*', 1, 0], [4, 'p.G12D', 0, 1], [4, 'p.Q5*', 1, 0]] };
+  const gof = makeGrouping('mutgof', lines, 'KRAS', ctx);
+  expect(members(gof.group)).toEqual([0]);
+  expect(included(gof)).toEqual([0]);                 // 1 is loss of function, 4 has both: neither is wild-type
+  expect([gof.a, gof.b]).toEqual(['KRAS hotspot mutation', 'wild-type']);
+  const lof = makeGrouping('mutlof', lines, 'KRAS', ctx);
+  expect(members(lof.group)).toEqual([1]);
+  expect(included(lof)).toEqual([1]);
+  const none = makeGrouping('mutlof', lines, 'KRAS', { e: [], c: [], m: [[1, 'p.R175*', 1, 0]] });
+  expect(included(none)).toEqual([0, 1, 4]);           // wild-type: lines 0 and 4 (2 has no calls, 3 is flagged)
+});
