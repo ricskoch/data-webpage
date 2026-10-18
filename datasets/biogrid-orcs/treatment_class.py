@@ -23,25 +23,27 @@ def load_rules(path=RULES_PATH):
     return rules
 
 
-def classify_part(part, rules, known_compounds):
+def classify_part(part, rules, known_compounds, curated=None):
+    if curated and part in curated:
+        return curated[part]["kind"]
     for r in rules["rules"]:
         if r["regex"].search(part):
             return r["category"]
     return "drug_compound" if part in known_compounds else "unclassified"
 
 
-def classify(label, rules, known_compounds=frozenset()):
+def classify(label, rules, known_compounds=frozenset(), curated=None):
     if label is None or not str(label).strip():
         return "untreated"
     parts = drug_names.split_label(label)
     if not parts["components"]:
         return "genetic_background" if parts["background"] else "untreated"
-    found = {classify_part(p, rules, known_compounds) for p in parts["components"]}
+    found = {classify_part(p, rules, known_compounds, curated) for p in parts["components"]}
     return next(c for c in PRIORITY if c in found)
 
 
-def classify_all(labels, rules, known_compounds=frozenset()):
-    return {label: classify(label, rules, known_compounds) for label in labels}
+def classify_all(labels, rules, known_compounds=frozenset(), curated=None):
+    return {label: classify(label, rules, known_compounds, curated) for label in labels}
 
 
 def summary(mapping):

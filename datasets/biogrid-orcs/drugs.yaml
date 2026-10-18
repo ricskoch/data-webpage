@@ -1,0 +1,445 @@
+# Reviewed treatment names (F20). A person checks each name the automatic lookup could not settle.
+# Key: the name as written in ORCS (after splitting a label on "|" and " + "). Fields:
+#   canonical   the name to look up in PubChem and ChEMBL (a list for two compounds in one label); null = no identifier expected
+#   kind        what the name is (categories in treatment_classes.yaml); beats the word rules there
+#   confidence  high / medium / low; low means "could not be identified, check the study"
+#   note        why, in plain words
+# Proposed 2026-10-18; Richard confirms by merging. Identifiers are filled in by re-running "Draft drug identifiers".
+curated:
+  17-AAG/Tanespimycin:
+    canonical: Tanespimycin
+    kind: drug_compound
+    confidence: high
+    note: 17-AAG is another name for tanespimycin (HSP90 inhibitor).
+  3D spheroid growth:
+    canonical: null
+    kind: culture_format
+    confidence: high
+  A159:
+    canonical: null
+    kind: drug_compound
+    confidence: low
+    note: Could not identify. Check the study; may be a lab compound code.
+  AZD5576 (CDK9i):
+    canonical: AZD5576
+    kind: drug_compound
+    confidence: high
+    note: CDK9 inhibitor; may be absent from PubChem.
+  Antimycin:
+    canonical: Antimycin A
+    kind: drug_compound
+    confidence: medium
+    note: Assumed antimycin A, the usual form.
+  Antimycin and Oligomycin:
+    canonical:
+    - Antimycin A
+    - Oligomycin A
+    kind: drug_compound
+    confidence: medium
+    note: Two compounds in one label.
+  Aspariginase:
+    canonical: Asparaginase
+    kind: drug_compound
+    confidence: high
+    note: Misspelling of asparaginase (enzyme drug); expect a ChEMBL ID, not PubChem.
+  BI6727/Volasertib:
+    canonical: Volasertib
+    kind: drug_compound
+    confidence: high
+    note: BI 6727 is volasertib (PLK1 inhibitor).
+  Benzo[a]pyrene Diol Epoxide (BPDE):
+    canonical: Benzo[a]pyrene-7,8-diol-9,10-epoxide
+    kind: drug_compound
+    confidence: medium
+    note: Several stereoisomers exist; check which one the study used.
+  Bisindolylm. (bisindolylmaleimide/GF109203X):
+    canonical: GF109203X
+    kind: drug_compound
+    confidence: high
+    note: GF109203X is bisindolylmaleimide I (PKC inhibitor).
+  Blasticidin:
+    canonical: Blasticidin S
+    kind: drug_compound
+    confidence: high
+  Bone morphogenetic protein 2 (BMP-2):
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Recombinant protein; no PubChem compound expected.
+  CBK77:
+    canonical: CBK77
+    kind: drug_compound
+    confidence: low
+    note: Not recognised from memory; kind assumed from the drug-exposure screen.
+  CD20xCD3 bsAb (bispecific antibodies):
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Bispecific antibody.
+  CTx-DTA:
+    canonical: null
+    kind: drug_compound
+    confidence: low
+    note: Could not identify; possibly a toxin construct. Check the study.
+  Calicheamicin:
+    canonical: Calicheamicin gamma1
+    kind: drug_compound
+    confidence: medium
+    note: PubChem has several calicheamicin entries; check the suggested one.
+  Camptothecin-2:
+    canonical: Camptothecin
+    kind: drug_compound
+    confidence: medium
+    note: The "-2" looks like a replicate suffix.
+  ? Cells grown in a transwell with matrigel and allowed to invade toward a higher concentration of serum in the bottom chamber
+  : canonical: null
+    kind: culture_format
+    confidence: high
+    note: Invasion assay set-up.
+  CfTX-1 (Chironex fleckeri toxin):
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Protein toxin.
+  Chlamydia trachomatis:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  Cisplatin-2/Cisplatin-3:
+    canonical: Cisplatin
+    kind: drug_compound
+    confidence: medium
+    note: '"-2" and "-3" look like replicate suffixes of one drug.'
+  ? Cpd‐391 (4‐(4‐Fluoro‐3‐(5‐methyl‐3‐(thiazol‐2‐yl)‐5,6,7,8‐tetrahydro‐[1,2,4]triazolo[4,3‐a]pyrazine‐7‐carbonyl)benzyl)phthalazin‐1(2H)‐one)
+  : canonical: 4-(4-Fluoro-3-(5-methyl-3-(thiazol-2-yl)-5,6,7,8-tetrahydro-[1,2,4]triazolo[4,3-a]pyrazine-7-carbonyl)benzyl)phthalazin-1(2H)-one
+    kind: drug_compound
+    confidence: medium
+    note: PARP inhibitor analogue; looked up by chemical name (the label uses non-ASCII hyphens).
+  Culture in suspension vs. adherent conditions:
+    canonical: null
+    kind: culture_format
+    confidence: high
+  Cultured in the absence of GM-CSF:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  Differentiation Medium:
+    canonical: null
+    kind: condition_change
+    confidence: medium
+  Escherichia coli (str. EDL933):
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  F. novicida lipopolysaccharide (LPS):
+    canonical: null
+    kind: drug_compound
+    confidence: medium
+    note: Bacterial cell-wall component; counted with toxins and biologics.
+  GM-CSF withdrawal:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  Galactose medium:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  HRASG12V isoform:
+    canonical: null
+    kind: genetic_background
+    confidence: high
+  High oxygen:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  IFN-β (Interferon beta):
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Cytokine.
+  IL-1α+TNF+C1q:
+    canonical: null
+    kind: drug_compound
+    confidence: medium
+    note: Three-protein cocktail written without spaces.
+  Immunotherapy (GVAX + PD-1 blockade):
+    canonical: null
+    kind: drug_compound
+    confidence: medium
+    note: Cell vaccine plus anti-PD-1 antibody; one treatment.
+  Induction of KSHV lytic reactivation:
+    canonical: null
+    kind: biological_agent
+    confidence: medium
+    note: Could also be read as a condition change.
+  Infection with HPV18PsV-BE2:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  Interferon gamma:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Cytokine.
+  Interleukin-1 β:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Cytokine.
+  Interleukin-2 (IL-2):
+    canonical: Aldesleukin
+    kind: drug_compound
+    confidence: medium
+    note: Aldesleukin is recombinant IL-2; expect a ChEMBL ID only.
+  J774 macrophages; anti-CD20:
+    canonical: null
+    kind: biological_agent
+    confidence: medium
+    note: Cells plus an antibody.
+  J774 macrophages; anti-CD20/anti-CD47:
+    canonical: null
+    kind: biological_agent
+    confidence: medium
+    note: Cells plus two antibodies.
+  KBrO3:
+    canonical: Potassium bromate
+    kind: drug_compound
+    confidence: high
+  KRASG12V isoform:
+    canonical: null
+    kind: genetic_background
+    confidence: high
+  KSH101:
+    canonical: KSH101
+    kind: drug_compound
+    confidence: low
+    note: Not recognised from memory.
+  LRP8-Knockout (LRP8-KO):
+    canonical: null
+    kind: genetic_background
+    confidence: high
+  Legionella pneumophila:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  Low oxygen:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  Malformin A1:
+    canonical: Malformin A1
+    kind: drug_compound
+    confidence: medium
+    note: Several PubChem entries; check the suggested one.
+  Mega CD40L:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Recombinant multimeric CD40 ligand.
+  Mycobacterium tuberculosis variant bovis BCG:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  NK (activated natural killer) cells:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  NRASG12V isoform:
+    canonical: null
+    kind: genetic_background
+    confidence: high
+  OTA-3998:
+    canonical: OTA-3998
+    kind: drug_compound
+    confidence: low
+    note: Not recognised from memory.
+  Obatoclax:
+    canonical: Obatoclax
+    kind: drug_compound
+    confidence: high
+    note: Several PubChem entries (salts); prefer the free base.
+  Oligomycin:
+    canonical: Oligomycin A
+    kind: drug_compound
+    confidence: medium
+    note: Assumed oligomycin A, the usual form.
+  PARP14 knockout:
+    canonical: null
+    kind: genetic_background
+    confidence: high
+  PVL (Panton–Valentine leukocidin):
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Protein toxin; the same agent as the next entry.
+  Panton–Valentine leukocidin (PVL):
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Protein toxin.
+  Prolonged amino acid starvation (16 h) using Earl’s buffered saline solution (EBSS):
+    canonical: null
+    kind: condition_change
+    confidence: high
+  Radiation:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  Ricin:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Protein toxin.
+  Rituximab:
+    canonical: Rituximab
+    kind: drug_compound
+    confidence: high
+    note: Antibody; expect a ChEMBL ID, not PubChem.
+  SARS-CoV-2 Spike:
+    canonical: null
+    kind: drug_compound
+    confidence: medium
+    note: Viral protein applied to cells.
+  SARS-CoV-2 Spike-RBD:
+    canonical: null
+    kind: drug_compound
+    confidence: medium
+    note: Viral protein fragment applied to cells.
+  SARS-CoV-2 Spike‐Δ19 protein pseudotyped lentivirus:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  Salmonella enterica:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  Salmonella enterica serovar Typhimurium:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  Salmonella enterica serovar Typhimurium and IFNgamma (500 U/ml):
+    canonical: null
+    kind: biological_agent
+    confidence: medium
+    note: Bacterium plus a cytokine; counted as the bacterium.
+  Shiga Toxin Stx1:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Protein toxin.
+  Spin infection with AAV2-GFP:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  Subtilase Cytotoxin (SubAB):
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Protein toxin.
+  TGFβ1:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Cytokine.
+  TIL (Tumor Infiltrating Lymphocyte) co-culture:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  TNF‐α:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Cytokine.
+  ? Thioparib (4-[[4-fluoro-3-[(5R)-5-methyl-3-(1,3-thiazol-2-yl)-6,8-dihydro-5H-[1,2,4]triazolo[4,3-a]pyrazine-7-carbonyl]phenyl]methyl]-2H-phthalazin-1-one)
+  : canonical: 4-[[4-fluoro-3-[(5R)-5-methyl-3-(1,3-thiazol-2-yl)-6,8-dihydro-5H-[1,2,4]triazolo[4,3-a]pyrazine-7-carbonyl]phenyl]methyl]-2H-phthalazin-1-one
+    kind: drug_compound
+    confidence: medium
+    note: Looked up by the chemical name given in the label.
+  Transduction with rAAV2-GFP:
+    canonical: null
+    kind: biological_agent
+    confidence: high
+  Transferrin receptor (TFRC/CD71):
+    canonical: null
+    kind: unclassified
+    confidence: low
+    note: A gene or protein, not obviously a treatment. Check the study.
+  Tunicamycin:
+    canonical: Tunicamycin
+    kind: drug_compound
+    confidence: high
+    note: A mixture of homologues; PubChem may list several.
+  Typhoid Toxin:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Protein toxin.
+  33ºC:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  37ºC:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  IFN pretreatment (IFN-α2a, 1pM):
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Cytokine pretreatment before infection.
+  EGFP marker (Zhu, 2021):
+    canonical: null
+    kind: biological_agent
+    confidence: medium
+    note: Fragment of "pseudovirus + EGFP marker"; the virus part is already counted.
+  Vorinostat/SAHA:
+    canonical: Vorinostat
+    kind: drug_compound
+    confidence: high
+    note: SAHA is vorinostat.
+  Wnt selection conditions:
+    canonical: null
+    kind: condition_change
+    confidence: medium
+  Wnt3a conditioned medium:
+    canonical: null
+    kind: condition_change
+    confidence: medium
+  alkaline stress (pH 8.25):
+    canonical: null
+    kind: condition_change
+    confidence: high
+  anti-CD22-asparagine-PEG2-maytansine:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Antibody-drug conjugate.
+  anti-IgM:
+    canonical: null
+    kind: drug_compound
+    confidence: high
+    note: Antibody.
+  antimycin A/oligomycin A:
+    canonical:
+    - Antimycin A
+    - Oligomycin A
+    kind: drug_compound
+    confidence: high
+    note: Two different compounds written with a slash.
+  glycine–arginine (GR) dipeptide-repeat (DPR) protein:
+    canonical: null
+    kind: drug_compound
+    confidence: low
+    note: Expressed or applied protein.
+  lipoprotein-depleted culture conditions:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  lipoprotein-rich culture conditions:
+    canonical: null
+    kind: condition_change
+    confidence: high
+  polymyxin B:
+    canonical: Polymyxin B
+    kind: drug_compound
+    confidence: high

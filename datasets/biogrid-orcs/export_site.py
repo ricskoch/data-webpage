@@ -67,10 +67,11 @@ def add_treatment_category(screens):
     A name on a "Drug Exposure" screen counts as a compound unless a rule says otherwise (3D culture, hypoxia...).
     """
     rules = treatment_class.load_rules()
+    curated = drug_names.load_curated(pathlib.Path(__file__).resolve().parent / "drugs.yaml")
     on_drug = screens[screens["experimental_setup"].eq(pairing.DRUG_SETUP) & screens["treatment"].notna()]
     known = {c for label in on_drug["treatment"].unique() for c in drug_names.split_label(label)["components"]}
     out = screens.copy()
-    out["treatment_category"] = [treatment_class.classify(t if pd.notna(t) else None, rules, known)
+    out["treatment_category"] = [treatment_class.classify(t if pd.notna(t) else None, rules, known, curated)
                                  for t in out["treatment"]]
     return out
 
