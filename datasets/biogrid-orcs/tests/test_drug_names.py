@@ -59,6 +59,32 @@ class DrugNames(unittest.TestCase):
         self.assertEqual(r["status"], "review")
         self.assertEqual([c["pubchem_cid"] for c in r["compounds"]], [23725625, 1])
 
+    def test_chembl_exact_filter_finds_a_biologic_the_free_text_search_misses(self):
+        responses = {"pref_name__iexact=Rituximab": {"molecules": [{"molecule_chembl_id": "CHEMBL1", "pref_name": "RITUXIMAB"}]},
+                     "q=Rituximab": {"molecules": [{"molecule_chembl_id": "CHEMBL9", "pref_name": "SOMETHING ELSE"}]}}
+        self.assertEqual(drug_names.chembl_exact("Rituximab", fake(responses)), "CHEMBL1")
+
+    def test_chembl_falls_back_to_search_when_the_filter_has_no_hit(self):
+        responses = {"q=Olaparib": {"molecules": [{"molecule_chembl_id": "CHEMBL521686", "pref_name": "OLAPARIB"}]}}
+        self.assertEqual(drug_names.chembl_exact("Olaparib", fake(responses)), "CHEMBL521686")
+
+    def test_curated_alternative_spellings_are_tried_in_order(self):
+        base = fake({"name/Polymyxin%20B%20sulfate/cids": {"IdentifierList": {"CID": [7]}},
+                     "cid/7/property": {"PropertyTable": {"Properties": [{"CID": 7, "Title": "Polymyxin B sulfate"}]}}})
+        curated = {"polymyxin B": {"canonical": "Polymyxin B", "also_try": ["Polymyxin B sulfate"],
+                                   "kind": "drug_compound", "confidence": "high"}}
+        r = drug_names.resolve("polymyxin B", base, curated)
+        self.assertEqual((r["status"], r["pubchem_cid"], r["looked_up_as"]), ("mapped", 7, "Polymyxin B sulfate"))
+
+    def test_accept_first_takes_the_first_of_several_and_says_so(self):
+        base = fake({"name/Obatoclax/cids": {"IdentifierList": {"CID": [5, 6]}}})
+        curated = {"Obatoclax": {"canonical": "Obatoclax", "accept_first": True, "kind": "drug_compound",
+                                 "confidence": "medium"}}
+        r = drug_names.resolve("Obatoclax", base, curated)
+        self.assertEqual((r["status"], r["pubchem_cid"], r["first_of_several"]), ("mapped", 5, True))
+        plain = {"Obatoclax": {**curated["Obatoclax"], "accept_first": False}}
+        self.assertEqual(drug_names.resolve("Obatoclax", base, plain)["status"], "review")
+
     def test_curated_unknown_spelling_stays_unmapped(self):
         curated = {"X": {"canonical": "Nothing", "kind": "drug_compound", "confidence": "low"}}
         self.assertEqual(drug_names.resolve("X", fake({}), curated)["status"], "unmapped")
