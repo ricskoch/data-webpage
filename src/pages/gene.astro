@@ -2,13 +2,14 @@
 import Base from '../layouts/Base.astro';
 import ScoreExplainer from '../components/ScoreExplainer.astro';
 ---
-<Base title="Gene lookup · CRISPR Screen Explorer" description="Look up one gene across all human CRISPR screens in BioGRID ORCS, with each screen's context.">
+<Base wide title="Gene lookup · CRISPR Screen Explorer" description="Look up one gene across all human CRISPR screens in BioGRID ORCS, with each screen's context.">
   <h1>Gene lookup</h1>
   <p class="notice"><strong>Prototype.</strong> Scores are aligned so that low means depleted. Not yet reviewed
     by a bioinformatician; do not use for research.</p>
   <form id="form" class="lookup">
-    <label>Gene symbol<br /><input id="q" name="g" autocomplete="off" placeholder="e.g. TP53" required /></label>
+    <div class="field"><label>Gene symbol<br /><input id="q" name="g" autocomplete="off" placeholder="e.g. TP53" required /></label></div>
     <button type="submit">Look up</button>
+    <p id="form-error" class="error" role="alert" hidden></p>
   </form>
   <ScoreExplainer />
   <div id="out" aria-live="polite"></div>
@@ -17,6 +18,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 <script>
   import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
+  import { mountCombobox, suggest, exactSymbol } from '../scripts/combobox';
   import { dependencyByMutation, verdict, median as recipeMedian, MIN_LINES, type Comparison } from '../scripts/recipe';
   import { loadLines, loadGene, credit, geneInLine, copyLabel, expressionLabel, type Lines, type LineGene } from '../scripts/context';
 
@@ -27,11 +29,12 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   let lines: Lines | null | undefined;
 
   /** Dots for each comparable screen on a 0 (depleted) to 1 (enriched) rank axis. */
-  function strip(ranks: number[]): string {
+  type Dot = { id: number; rank: number; tip: string };
+  function strip(dots: Dot[], picked: number | null): string {
     const W = 600, H = 70, x = (r: number) => 20 + r * (W - 40);
-    const dots = ranks.map((r, i) => `<circle class="dot" cx="${x(r).toFixed(1)}" cy="${18 + (i % 7) * 4}" r="3"/>`).join('');
-    return `<svg class="strip" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rank of this gene in ${ranks.length} screens">
-      ${dots}<line class="axis" x1="20" x2="${W - 20}" y1="50" y2="50"/>
+    const marks = dots.map((d, i) => `<circle class="dot${d.id === picked ? ' picked' : ''}" data-i="${d.id}" cx="${x(d.rank).toFixed(1)}" cy="${18 + (i % 7) * 4}" r="${d.id === picked ? 5 : 3}"><title>${escapeHtml(d.tip)}</title></circle>`).join('');
+    return `<svg class="strip" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rank of this gene in ${dots.length} screens. Click a dot to select its row.">
+      ${marks}<line class="axis" x1="20" x2="${W - 20}" y1="50" y2="50"/>
       <text x="20" y="66">0 · most depleted</text><text x="${W / 2}" y="66" text-anchor="middle">0.5</text>
       <text x="${W - 20}" y="66" text-anchor="end">1 · most enriched</text></svg>`;
   }
@@ -87,7 +90,11 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       genes ??= await getJSON<Record<string, [string, number]>>('genes.json');
       screens ??= await getJSON<Screen[]>('screens.json');
       const key = findGene(symbol);
-      if (!key) { out.innerHTML = `<p>No gene <span class="gene">${escapeHtml(symbol)}</span> in this collection. Symbols follow the source files; try an older name if it was renamed.</p>`; return; }
+      if (!key) {
+        const near = suggest(Object.keys(genes), symbol, 5);
+        out.innerHTML = `<p>No gene <span class="gene">${escapeHtml(symbol)}</span> in this collection. Symbols follow the source files; try an older name if it was renamed.${near.length ? ` Similar symbols: ${near.map((n) => `<a href="?g=${encodeURIComponent(n)}" class="gene">${escapeHtml(n)}</a>`).join(', ')}.` : ''}</p>`;
+        return;
+      }
       const [pid, shard] = genes![key];
       lines ??= await loadLines();
       const gctx = lines ? await loadGene(pid, shard) : undefined;
@@ -107,8 +114,8 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           <li><b>${hits}</b><span>hits called by the source</span></li>
           ${lines && gctx ? `<li><b>${mutatedIn}</b><span>of ${lines.lines.length} profiled lines carry a protein-altering mutation</span></li>` : ''}
         </ul>
-        <figure>${strip(ranked.map((r) => r[1]!))}
-          <figcaption>Fig. 1. Rank of <span class="gene">${escapeHtml(key)}</span> within each comparable screen. A gene that is essential everywhere sits at the left.</figcaption></figure>
+        <figure><div id="strip"></div>
+          <figcaption>Fig. 1. Rank of <span class="gene">${escapeHtml(key)}</span> within each comparable screen. A gene that is essential everywhere sits at the left. The plot follows the filters; hover a dot for its screen, click to select its row.</figcaption></figure>
         ${lines ? `<h3>Does it depend on a mutation?</h3>
         <form id="recipe" class="lookup"><label>Compare lines with and without a mutation in<br />
           <input id="y" autocomplete="off" placeholder="e.g. KRAS" required /></label>
@@ -116,17 +123,32 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         <div id="recipe-out" aria-live="polite"></div>` : ''}
         <h3>Every screen result for this gene</h3>
         <div id="results"></div>${lines && gctx ? `<p>${credit(lines)}</p>` : ''}`;
-      type Row = { s: Screen; rank: number | null; scale: number | null; z: number | null; hit: number; native: number | null;
+      type Row = { id: number; s: Screen; rank: number | null; scale: number | null; z: number | null; hit: number; native: number | null;
         tissue: string | null; ctx: LineGene | null };
-      const data: Row[] = rows.map((r) => {
+      const data: Row[] = rows.map((r, id) => {
         const s = screens![r[0]], li = lines?.screen_line[String(s.screen_id)];
         const line = li === undefined ? null : lines!.lines[li];
-        return { s, rank: r[1], scale: r[2], z: r[3], hit: r[4], native: r[5], tissue: line?.lineage ?? null,
+        return { id, s, rank: r[1], scale: r[2], z: r[3], hit: r[4], native: r[5], tissue: line?.lineage ?? null,
           ctx: li === undefined ? null : geneInLine(gctx, li) };
       });
       const ctxCols = lines && gctx;
       const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
-      mountTable<Row>(document.getElementById('results')!, {
+      const stripBox = document.getElementById('strip')!;
+      const detail = (r: Row) => {
+        const row = (k: string, v: string) => `<dt>${k}</dt><dd>${v}</dd>`;
+        return `<h3>${text(r.s.author_label ?? r.s.study_id)}</h3><dl>
+          ${row('Cell line', text(r.s.cell_line_label))}${row('Phenotype', text(r.s.phenotype))}${row('Treatment', text(treatmentLabel(r.s)))}
+          ${row('Rank', fmt(r.rank))}${row('Scale', fmt(r.scale))}${row('Robust z', fmt(r.z))}${row('Hit', r.hit ? 'yes' : 'no')}
+          ${row('Native score', `${fmt(r.native, 3)} ${text(r.s.scoring_method)}`)}${row('Comparable as', text(label(r.s.normalization_status)))}
+          ${r.tissue ? row('Tissue', text(r.tissue)) : ''}${r.ctx ? row('Mutation in line', text(r.ctx.mutation ?? 'none')) : ''}</dl>`;
+      };
+      const handle = mountTable<Row>(document.getElementById('results')!, {
+        detail,
+        onView: (view, picked) => {
+          const dots = view.filter((r) => r.rank !== null).map((r) => ({ id: r.id, rank: r.rank!,
+            tip: `${r.s.author_label ?? r.s.study_id}, ${r.s.cell_line_label}: rank ${fmt(r.rank)}` }));
+          stripBox.innerHTML = strip(dots, picked?.id ?? null);
+        },
         rows: data, noun: 'screen results', label: 'Results table', sort: { column: 5, dir: 'asc' },
         caption: 'Table 1. Results for this gene, most depleted first. Rank: 0 to 1. Scale: 0 = like a non-essential gene, −1 = like a core-essential gene.',
         search: { label: 'Search study, cell line or treatment', in: [(r) => r.s.author_label, (r) => r.s.study_id, (r) => r.s.cell_line_label, (r) => r.s.treatment] },
@@ -163,6 +185,12 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           ] : []),
         ],
       });
+      stripBox.addEventListener('click', (e) => {
+        const dot = (e.target as Element).closest<SVGElement>('[data-i]');
+        if (dot) handle.select(data[Number(dot.dataset.i)]);
+      });
+      const y = document.getElementById('y') as HTMLInputElement | null;
+      if (y) mountCombobox(y, () => Object.keys(genes!), () => {});
       document.getElementById('recipe')?.addEventListener('submit', (e) => {
         e.preventDefault();
         const y = (document.getElementById('y') as HTMLInputElement).value.trim();
@@ -173,7 +201,22 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     }
   }
 
-  document.getElementById('form')!.addEventListener('submit', (e) => { e.preventDefault(); lookup(input.value.trim()); });
+  // Gene symbols load up front so the dropdown and the validation below work before the first lookup.
+  const known = () => (genes ? Object.keys(genes) : []);
+  const formError = document.getElementById('form-error')!;
+  const go = (symbol: string) => {
+    formError.hidden = true;
+    if (genes && !exactSymbol(known(), symbol)) {
+      const near = suggest(known(), symbol, 5);
+      formError.textContent = `"${symbol}" is not a gene in this collection.${near.length ? ` Did you mean ${near.join(', ')}?` : ' Start typing and pick a symbol from the list.'}`;
+      formError.hidden = false;
+      return;
+    }
+    lookup(symbol);
+  };
+  mountCombobox(input, known, go);
+  getJSON<Record<string, [string, number]>>('genes.json').then((g) => { genes ??= g; }).catch(() => { /* lookup() reports the load error */ });
+  document.getElementById('form')!.addEventListener('submit', (e) => { e.preventDefault(); go(input.value.trim()); });
   const start = new URLSearchParams(location.search).get('g');
   if (start) { input.value = start; lookup(start); }
 </script>

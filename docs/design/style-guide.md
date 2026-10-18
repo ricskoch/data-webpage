@@ -61,6 +61,7 @@ New colours need a contrast check before use.
 - **Divider:** `rule.svg` (`.rule`) between major sections, at most once or twice a page.
 
 ## Layout and accessibility
-- Reading width `--max` (46rem); header and footer use `--max-wide`.
+- Reading width `--max` (46rem); header and footer use `--max-wide`. Workspace pages (`<Base wide>`, data tables and plots) use `--max-app` (110rem) and are designed for desktop first: filters in a sticky left panel, results in the middle, details at the right; they stack on narrow screens.
+- Selectable rows (`mountTable` with `detail`): `aria-current` marks the selection, rows are keyboard-focusable (Enter/Space select, arrows move). Panels are `role="group"`, not `aside`, to keep axe's landmark rules happy.
 - Usable at 375 px wide with no horizontal scroll; touch targets at least 44 px tall.
 - Respect dark mode through the tokens; do not add a separate dark stylesheet.

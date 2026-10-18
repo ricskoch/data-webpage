@@ -51,14 +51,22 @@ export interface TableOptions<T> {
   search?: { label: string; in: Getter<T>[] };
   sort?: { column: number; dir: Dir };
   noun: string;
+  /** Called after every render with all rows that match the filters, in table order (to redraw a linked plot). */
+  onView?: (rows: T[], selected: T | null) => void;
+  /** Detail panel: HTML for the selected row. Without it the table has no selectable rows. */
+  detail?: (row: T) => string;
+  onSelect?: (row: T | null) => void;
 }
+
+export interface TableHandle<T> { select: (row: T | null) => void }
 
 const SIZES = [25, 50, 100];
 
 /** Render filters, a sortable table and a pager into `root`. Escapes nothing in `cell` output: cells must escape. */
-export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): void {
+export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): TableHandle<T> {
   const chosen: Record<string, string> = {};
   let query = '', sort = o.sort ?? null, page = 1, size = SIZES[0];
+  let selected: T | null = null, view: T[] = [];
   const getters = Object.fromEntries(o.facets.map((f) => [f.key, f.get]));
 
   const selects = o.facets.map((f) => {
@@ -67,10 +75,11 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): void {
     return `<label>${escapeHtml(f.label)}<select data-facet="${f.key}" aria-label="${escapeHtml(f.label)}"><option value="">All</option>${opts}</select></label>`;
   }).join('');
   const search = o.search ? `<label>${escapeHtml(o.search.label)}<input type="search" data-search aria-label="${escapeHtml(o.search.label)}" /></label>` : '';
-  root.innerHTML = `
-    <div class="filters">${search}${selects}
+  root.innerHTML = `<div class="workspace${o.detail ? ' has-detail' : ''}">
+    <div class="side" role="group" aria-label="Filters"><div class="filters">${search}${selects}
       <label>Rows per page<select data-size aria-label="Rows per page">${SIZES.map((s) => `<option>${s}</option>`).join('')}</select></label>
-      <button type="button" data-reset>Clear filters</button></div>
+      <button type="button" data-reset>Clear filters</button></div></div>
+    <div class="main-pane">
     <p class="caption" aria-live="polite" data-count></p>
     <div class="table-box" tabindex="0" role="region" aria-label="${escapeHtml(o.label)}"><table>
       <caption>${o.caption}</caption>
@@ -79,15 +88,17 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): void {
         : escapeHtml(c.label)}</th>`).join('')}</tr></thead>
       <tbody></tbody></table></div>
     <nav class="pager" aria-label="${escapeHtml(o.label)} pages">
-      <button type="button" data-page="-1">Previous</button><span data-pos></span><button type="button" data-page="1">Next</button></nav>`;
+      <button type="button" data-page="-1">Previous</button><span data-pos></span><button type="button" data-page="1">Next</button></nav></div>
+    ${o.detail ? '<div class="detail" role="group" aria-label="Selected row" aria-live="polite" data-detail></div>' : ''}</div>`;
 
   const $ = <E extends Element>(sel: string) => root.querySelector<E>(sel)!;
   const render = () => {
     let hits = filterRows(o.rows, getters, chosen, query, o.search?.in ?? []);
     if (sort && o.columns[sort.column].sort) hits = sortRows(hits, o.columns[sort.column].sort!, sort.dir);
+    view = hits;
     const p = pageOf(hits, page, size);
     page = p.page;
-    $('tbody').innerHTML = p.rows.map((r) => `<tr>${o.columns.map((c) =>
+    $('tbody').innerHTML = p.rows.map((r, n) => `<tr${o.detail ? ` tabindex="0" data-i="${(p.page - 1) * size + n}"` : ''}${r === selected ? ' aria-current="true"' : ''}>${o.columns.map((c) =>
       `<td${c.num ? ' class="num"' : ''}>${c.cell(r)}</td>`).join('')}</tr>`).join('');
     $('[data-count]').textContent = `${hits.length.toLocaleString('en')} of ${o.rows.length.toLocaleString('en')} ${o.noun} match.`;
     $('[data-pos]').textContent = `Page ${p.page} of ${p.pages}`;
@@ -99,6 +110,18 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): void {
       const mark = th.querySelector('span');
       if (mark) mark.textContent = on ? (sort!.dir === 'asc' ? ' ▲' : ' ▼') : '';
     });
+    if (o.detail) {
+      $('[data-detail]').innerHTML = selected ? o.detail(selected) : '<p class="caption">Select a row (click it, or use the arrow keys) to see its details here.</p>';
+    }
+    o.onView?.(hits, selected);
+  };
+  const choose = (row: T | null) => {
+    selected = row;
+    const i = row ? view.indexOf(row) : -1;
+    if (i >= 0) page = Math.floor(i / size) + 1;
+    o.onSelect?.(row);
+    render();
+    if (i >= 0) root.querySelector<HTMLElement>('tr[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
   };
 
   root.addEventListener('change', (e) => {
@@ -111,8 +134,28 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): void {
     const el = e.target as HTMLInputElement;
     if (el.hasAttribute('data-search')) { query = el.value; page = 1; render(); }
   });
+  const rowOf = (el: HTMLElement) => { const tr = el.closest<HTMLElement>('tr[data-i]'); return tr ? view[Number(tr.dataset.i)] : undefined; };
+  root.addEventListener('keydown', (e) => {
+    const tr = (e.target as HTMLElement).closest<HTMLElement>('tr[data-i]');
+    if (!tr) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(rowOf(tr)!); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const next = e.key === 'ArrowDown' ? tr.nextElementSibling : tr.previousElementSibling;
+      if (next) { e.preventDefault(); choose(rowOf(next as HTMLElement)!); root.querySelector<HTMLElement>('tr[aria-current="true"]')?.focus(); }
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement;
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) {
+      const s = root.querySelector<HTMLInputElement>('[data-search]');
+      if (s) { e.preventDefault(); s.focus(); }
+    }
+  });
   root.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest('button');
+    const target = e.target as HTMLElement;
+    const row = o.detail && !target.closest('a, button') ? rowOf(target) : undefined;
+    if (row) { choose(row === selected ? null : row); return; }
+    const b = target.closest('button');
     if (!b) return;
     if (b.dataset.sort) {
       const col = Number(b.dataset.sort);
@@ -128,4 +171,5 @@ export function mountTable<T>(root: HTMLElement, o: TableOptions<T>): void {
     render();
   });
   render();
+  return { select: choose };
 }

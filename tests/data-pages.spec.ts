@@ -117,3 +117,46 @@ test('/gene: the gene\'s own mutation, expression and copy number in each screen
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });
+
+// Desktop workspace (interactive layout): gene dropdown and validation, row selection linked to the plot.
+test('/gene: dropdown suggests known genes and unknown symbols are rejected', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/gene');
+  await expect(async () => {
+    await page.getByLabel('Gene symbol').fill('tp');
+    await expect(page.getByRole('option', { name: 'TP53' })).toBeVisible({ timeout: 500 });
+  }).toPass();
+  await page.getByRole('option', { name: 'TP53' }).click();
+  await expect(page.locator('#results [data-count]')).toHaveText('60 of 60 screen results match.');
+  await page.getByLabel('Gene symbol').fill('ZZZ9');
+  await page.getByLabel('Gene symbol').press('Escape');
+  await page.getByRole('button', { name: 'Look up' }).click();
+  await expect(page.locator('#form-error')).toContainText('not a gene in this collection');
+});
+
+test('/gene: selecting a row shows its details and marks its dot in the plot; the plot follows the filters', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/gene?g=TP53');
+  await expect(page.locator('#strip circle')).toHaveCount(60);
+  await page.locator('#results tbody tr').nth(2).click();
+  await expect(page.locator('[data-detail] h3')).toHaveText('Author 2 (2020)');
+  await expect(page.locator('#strip circle.picked')).toHaveCount(1);
+  await page.getByLabel('Treatment', { exact: true }).selectOption('Olaparib');
+  await expect(page.locator('#strip circle')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await page.locator('#strip circle').nth(10).dispatchEvent('click');
+  await expect(page.locator('#strip circle.picked')).toHaveCount(1);
+  await expect(page.locator('#results tr[aria-current="true"]')).toHaveCount(1);
+});
+
+test('/data: arrow keys move the selection and the detail panel follows', async ({ page }) => {
+  await fakeData(page);
+  await page.goto('/data');
+  await page.locator('#screens tbody tr').first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-detail] h3')).toHaveText('Author 0 (2020)');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-detail] h3')).toHaveText('Author 1 (2020)');
+  await page.keyboard.press('/');
+  await expect(page.locator('#screens [data-search]')).toBeFocused();
+});

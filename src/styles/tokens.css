@@ -16,6 +16,7 @@
   --info: #2f4a6b;        /* woad, info and "depleted", 7.6:1 */
   --border: #b9a47e;      /* pencil rule, borders only (2.0:1, not for text) */
   --border-soft: #d9c9a6;
+  --selected: #efe2c3;    /* selected / hovered table row */
 
   /* Chart pigments, categorical, use in this order (all >= 3:1 on --surface) */
   --chart-1: #2f5e8c;     /* Prussian blue */
@@ -48,6 +49,7 @@
   --space-5: 4rem;
   --max: 46rem;
   --max-wide: 70rem;
+  --max-app: 110rem;      /* desktop workspace pages */
   --radius: 3px;
 }
 
@@ -65,6 +67,7 @@
     --info: #a3bcdb;      /* 9.0:1 */
     --border: #5a4c39;
     --border-soft: #3a3127;
+    --selected: #3a3024;
     --chart-1: #7fa7d1;
     --chart-2: #e0a258;
     --chart-3: #9cbf78;

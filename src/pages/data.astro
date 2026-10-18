@@ -2,13 +2,13 @@
 import Base from '../layouts/Base.astro';
 import ScoreExplainer from '../components/ScoreExplainer.astro';
 ---
-<Base title="Data overview · CRISPR Screen Explorer" description="What is in the BioGRID ORCS human CRISPR screen collection: screens, studies, methods and how comparable they are.">
+<Base wide title="Data overview · CRISPR Screen Explorer" description="What is in the BioGRID ORCS human CRISPR screen collection: screens, studies, methods and how comparable they are.">
   <h1>Data overview</h1>
   <p class="notice"><strong>Prototype.</strong> BioGRID ORCS 2.0.18, human screens, converted by this project's
     pipeline. Not yet reviewed by a bioinformatician; do not use for research.</p>
   <div id="overview" aria-live="polite"><p>Loading the data…</p></div>
   <h2>Screens</h2>
-  <p>Narrow the list with the filters; click a column header to sort.</p>
+  <p>Narrow the list with the filters at the left; click a column header to sort, a row to see its details. Press / to search.</p>
   <ScoreExplainer />
   <div id="screens"><p>Loading the screens…</p></div>
   <p id="credit"></p>
@@ -48,8 +48,18 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 
     const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
     if (lines) document.getElementById('credit')!.innerHTML = credit(lines);
+    const detail = (s: Screen) => {
+      const l = lineOf(s);
+      const row = (k: string, v: string) => `<dt>${k}</dt><dd>${v}</dd>`;
+      return `<h3>${text(s.author_label ?? s.study_id)}</h3><dl>
+        ${row('Cell line', text(s.cell_line_label))}${row('Phenotype', text(s.phenotype))}${row('Treatment', text(treatmentLabel(s)))}
+        ${row('Library', text(s.library_name))}${row('Perturbation', text(label(s.perturbation_type)))}${row('Selection', text(label(s.selection_type)))}
+        ${row('Scoring method', text(s.scoring_method))}${row('Genes', (s.rows ?? 0).toLocaleString('en'))}
+        ${row('Comparable as', text(label(s.normalization_status)))}${row('Score direction', text(s.direction))}
+        ${l ? row('Tissue', text(l.lineage)) + row('Key mutations in line', l.drivers.length ? escapeHtml(l.drivers.join(', ')) : 'none in panel') : ''}</dl>`;
+    };
     mountTable<Screen>(document.getElementById('screens')!, {
-      rows: screens, noun: 'screens', label: 'Screens table',
+      detail, rows: screens, noun: 'screens', label: 'Screens table',
       caption: 'Table 1. Screens in the collection. Genes = number of gene results in the screen.',
       search: { label: lines ? 'Search study, cell line, phenotype, treatment or mutated gene' : 'Search study, cell line, phenotype or treatment', in: [(s) => s.author_label, (s) => s.study_id, (s) => s.cell_line_label, (s) => s.phenotype, (s) => s.treatment, (s) => lineOf(s)?.drivers.join(' ')] },
       facets: [
