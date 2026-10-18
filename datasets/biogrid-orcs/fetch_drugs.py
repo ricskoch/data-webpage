@@ -16,6 +16,7 @@ import yaml
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import drug_names  # noqa: E402
+import treatment_class  # noqa: E402
 
 GAP = 0.25  # seconds between any two calls (all threads together): 4 per second, under PubChem's limit of 5
 WORKERS = 4
@@ -52,6 +53,19 @@ def fetch_json(url, tries=3):
     return None
 
 
+def category_section(cond):
+    """Kinds of treatment labels, with the ones no rule could sort (treatment_classes.yaml)."""
+    rules = treatment_class.load_rules()
+    on_drug = cond[cond["setup"].eq("Drug Exposure")]["agent_label"].dropna().unique()
+    known = {c for label in on_drug for c in drug_names.split_label(label)["components"]}
+    kinds = treatment_class.classify_all(cond["agent_label"].dropna().unique(), rules, known)
+    lines = ["", "## Treatment kinds", "", ", ".join(f"{k} {v}" for k, v in sorted(treatment_class.summary(kinds).items())), ""]
+    for kind in ("unclassified", "condition_change", "culture_format", "biological_agent", "genetic_background"):
+        names = sorted(label for label, k in kinds.items() if k == kind)
+        lines += [f"### {kind} ({len(names)})", "", *[f"- `{n}`" for n in names], ""]
+    return "\n".join(lines)
+
+
 def report(mapping, counts):
     lines = ["# Drug identifier draft", "", f"Labels: {len(mapping)}  " + ", ".join(f"{k} {v}" for k, v in counts.items()),
              f"Calls that failed after retries (treated as no answer): {len(errors)}", *[f"- {e}" for e in errors[:20]], "",
@@ -78,7 +92,7 @@ def main(work):
     (out / "drugs.draft.yaml").write_text(yaml.safe_dump(
         {"source": "PubChem PUG REST (public domain), ChEMBL API (CC BY-SA 3.0, IDs only)", "labels": mapping},
         sort_keys=True, allow_unicode=True))
-    text = report(mapping, counts)
+    text = report(mapping, counts) + category_section(cond)
     (out / "drugs_report.md").write_text(text)
     print(text)
     print(json.dumps(counts))

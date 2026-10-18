@@ -20,7 +20,9 @@ import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import drug_export  # noqa: E402
+import drug_names  # noqa: E402
 import pairing  # noqa: E402
+import treatment_class  # noqa: E402
 
 N_SHARDS = 1024
 SCREEN_FIELDS = ["screen_id", "study_id", "cell_line_label", "library_name", "perturbation_type", "selection_type",
@@ -59,6 +61,20 @@ def add_treatment(screens, conditions):
     return out.where(out.notna(), None)
 
 
+def add_treatment_category(screens):
+    """treatment_category: what kind of thing the treatment label is (treatment_classes.yaml).
+
+    A name on a "Drug Exposure" screen counts as a compound unless a rule says otherwise (3D culture, hypoxia...).
+    """
+    rules = treatment_class.load_rules()
+    on_drug = screens[screens["experimental_setup"].eq(pairing.DRUG_SETUP) & screens["treatment"].notna()]
+    known = {c for label in on_drug["treatment"].unique() for c in drug_names.split_label(label)["components"]}
+    out = screens.copy()
+    out["treatment_category"] = [treatment_class.classify(t if pd.notna(t) else None, rules, known)
+                                 for t in out["treatment"]]
+    return out
+
+
 def add_primary_score(screens, score_defs, plottable):
     """primary_score_name (native name of the primary score) and has_z (a per-screen vector is published)."""
     names = score_defs.rename(columns={"position": "primary_score_position", "native_name": "primary_score_name"})
@@ -86,6 +102,7 @@ def summary(screens):
             "by_perturbation": top("perturbation_type"), "by_selection": top("selection_type"),
             "top_cell_lines": top("cell_line_label"), "top_phenotypes": top("phenotype"),
             "top_treatments": top("treatment"),
+            "by_treatment_category": screens["treatment_category"].value_counts().to_dict(),
             "by_year": {int(k): int(v) for k, v in screens["year"].dropna().value_counts().sort_index().items()}}
 
 
@@ -136,6 +153,7 @@ def main(work):
     results = pd.read_parquet(out / "results.parquet", columns=cols)
     screens = screen_table(pd.read_parquet(out / "screens.parquet"), pd.read_parquet(out / "studies.parquet"), results)
     screens = add_treatment(screens, pd.read_parquet(out / "conditions.parquet"))
+    screens = add_treatment_category(screens)
     candidates = pairing.control_candidates(screens)
     plottable = drug_export.plottable_ids(screens, candidates)
     screens = add_primary_score(screens, pd.read_parquet(out / "score_defs.parquet"), plottable)
