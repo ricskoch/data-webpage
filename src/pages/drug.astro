@@ -34,7 +34,7 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <script>
-  import { getJSON, fmt, escapeHtml, treatmentLabel, type Screen } from '../scripts/data';
+  import { getJSON, getScreens, fmt, escapeHtml, treatmentLabel, type Screen } from '../scripts/data';
   import { joinVectors, topDifferences, drugsOf, MATCH_TEXT, type Vector, type Match, type Point } from '../scripts/drug';
   import { drawPoints, palette } from '../scripts/charts';
 
@@ -46,7 +46,7 @@ import Base from '../layouts/Base.astro';
   async function main() {
     try {
       const [screens, pairs, perts] = await Promise.all([
-        getJSON<Screen[]>('screens.json'), getJSON<Record<string, [string, Match][]>>('drug_pairs.json'),
+        getScreens(), getJSON<Record<string, [string, Match][]>>('drug_pairs.json'),
         getJSON<string[]>('perts.json')]);
       const byId = new Map(screens.map((s) => [s.screen_id, s]));
       const usable = (s: Screen) => s.has_z && pairs[s.screen_id]?.some(([c]) => byId.get(c)?.has_z);

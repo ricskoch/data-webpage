@@ -10,6 +10,10 @@ export interface Screen {
   known_biology_pass: boolean | null; rows: number | null; hits: number | null;
   /** Condition as the source names it (drug, virus, toxin...), null for untreated screens. */
   treatment?: string | null; treatment_dose?: string | null; treatment_duration?: string | null; treatment_category?: string | null;
+  /** Display names from the export (cell line like MDAMB231, drug like Olaparib); absent in older exports. */
+  cell_line_display?: string; treatment_display?: string | null;
+  /** Source labels, kept when the display names replace cell_line_label and treatment on load. */
+  cell_line_raw?: string; treatment_raw?: string | null;
   /** Drug page: native name and column of the score the per-screen vector is built from; has_z = vector published. */
   primary_score_name?: string | null; primary_score_position?: number | null; has_z?: boolean;
 }
@@ -27,6 +31,21 @@ export async function getJSON<T>(path: string): Promise<T> {
   const res = await fetch(versioned(`${DATA_URL}/${path}`));
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.json() as Promise<T>;
+}
+
+/** Swaps the display names in for the source labels, so every page shows and groups by one spelling; falls back to the source label. */
+export function applyDisplayNames(screens: Screen[]): Screen[] {
+  for (const s of screens) {
+    if (s.cell_line_raw !== undefined) continue;
+    s.cell_line_raw = s.cell_line_label; s.treatment_raw = s.treatment;
+    if (s.cell_line_display) s.cell_line_label = s.cell_line_display;
+    if (s.treatment && s.treatment_display) s.treatment = s.treatment_display;
+  }
+  return screens;
+}
+
+export async function getScreens(): Promise<Screen[]> {
+  return applyDisplayNames(await getJSON<Screen[]>('screens.json'));
 }
 
 export const fmt = (x: number | null | undefined, digits = 2) =>

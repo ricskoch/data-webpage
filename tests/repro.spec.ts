@@ -25,3 +25,17 @@ test('versioned adds the build id to a data URL so a new deploy skips cached cop
   expect(versioned('https://x.test/a.json')).toBe('https://x.test/a.json?v=dev');
   expect(versioned('https://x.test/a.json?q=1')).toBe('https://x.test/a.json?q=1&v=dev');
 });
+
+test('applyDisplayNames shows display names, keeps the source labels, and falls back when a name is missing', async () => {
+  const { applyDisplayNames } = await import('../src/scripts/data');
+  const base = { screen_id: '1', study_id: 's' } as any;
+  const [a, b, c] = applyDisplayNames([
+    { ...base, cell_line_label: 'MDA-MB-231', cell_line_display: 'MDAMB231', treatment: 'olaparib', treatment_display: 'Olaparib' },
+    { ...base, cell_line_label: 'HeLa', treatment: null },
+    { ...base, cell_line_label: 'K562', treatment: 'DMSO', treatment_display: null },
+  ]);
+  expect([a.cell_line_label, a.treatment, a.cell_line_raw, a.treatment_raw]).toEqual(['MDAMB231', 'Olaparib', 'MDA-MB-231', 'olaparib']);
+  expect([b.cell_line_label, b.treatment]).toEqual(['HeLa', null]);
+  expect([c.cell_line_label, c.treatment]).toEqual(['K562', 'DMSO']);
+  expect(applyDisplayNames([a])[0].treatment).toBe('Olaparib'); // second call changes nothing
+});

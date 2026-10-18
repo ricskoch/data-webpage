@@ -27,12 +27,12 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 </Base>
 
 <script>
-  import { getJSON, label, escapeHtml, type Screen, treatmentLabel } from '../scripts/data';
+  import { getJSON, getScreens, label, escapeHtml, type Screen, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
   import { draw, barTrace } from '../scripts/charts';
   import { loadLines, credit, type Line } from '../scripts/context';
   import { kindCounts, drugCoverage, KIND_TEXT } from '../scripts/coverage';
-  import { getRepro, summarize, bandOf, overChance, BAND_TEXT } from '../scripts/repro';
+  import { getRepro, type Pair, summarize, bandOf, overChance, BAND_TEXT } from '../scripts/repro';
 
   const box = document.getElementById('overview')!;
   // Pairs of screens of the same drug and cell line: rho against the shared strongest genes, then the list.
@@ -43,7 +43,9 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
       el.innerHTML = `<p class="notice"><strong>Not published yet.</strong> The reproducibility scores have not been uploaded to the data store (${escapeHtml(String(err))}).</p>`;
       return;
     }
-    const pairs = [...repro.pairs].sort((a, b) => b[5] - a[5] || a[0].localeCompare(b[0], 'en'));
+    // names of the screens (display spelling) instead of the source labels in the file
+    const pairs = repro.pairs.map((p): Pair => [screens[p[2]]?.treatment ?? p[0], screens[p[2]]?.cell_line_label ?? p[1], ...p.slice(2)] as Pair)
+      .sort((a, b) => b[5] - a[5] || a[0].localeCompare(b[0], 'en'));
     if (!pairs.length) { el.innerHTML = '<p>No drug and cell line combination has two comparable screens.</p>'; return; }
     const s = summarize(pairs);
     const study = (i: number) => escapeHtml(screens[i]?.author_label ?? screens[i]?.study_id ?? '–');
@@ -108,7 +110,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   }
   async function main() {
   try {
-    const [summary, screens, lines] = await Promise.all([getJSON<any>('summary.json'), getJSON<Screen[]>('screens.json'), loadLines()]);
+    const [summary, screens, lines] = await Promise.all([getJSON<any>('summary.json'), getScreens(), loadLines()]);
     // Cell line context (DepMap + Cellosaurus) is optional: without it the table keeps its original columns.
     const lineOf = (s: Screen): Line | null => {
       const i = lines?.screen_line[String(s.screen_id)];
@@ -132,9 +134,15 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         <div class="card"><h3>Most screened cell lines</h3><div class="chart" id="c-cell" role="group" aria-label="Most screened cell lines"></div></div>
         <div class="card"><h3>What was done to the cells?</h3><div class="chart" id="c-kind" role="group" aria-label="Screens by kind of treatment"></div></div>
       </div>`;
+    // counted here, not read from summary.json, so the names follow the display spelling
+    const topCellLines = (all: Screen[]) => {
+      const n: Record<string, number> = {};
+      for (const s of all) n[s.cell_line_label] = (n[s.cell_line_label] ?? 0) + 1;
+      return Object.fromEntries(Object.entries(n).sort((a, b) => b[1] - a[1]).slice(0, Object.keys(summary.top_cell_lines ?? {}).length || 15));
+    };
     const drawBars = (id: string, counts: Record<string, number>) => draw(document.getElementById(id)!, [barTrace(counts)], { margin: { l: 130, r: 16, t: 8, b: 32 } }, { displayModeBar: false });
     drawBars('c-status', summary.by_status); drawBars('c-pert', summary.by_perturbation);
-    drawBars('c-sel', summary.by_selection); drawBars('c-cell', summary.top_cell_lines);
+    drawBars('c-sel', summary.by_selection); drawBars('c-cell', topCellLines(screens));
     drawBars('c-kind', kindCounts(screens));
     drawCoverage(screens);
     drawRepro(screens);
