@@ -13,4 +13,6 @@ Outputs in `out/`: `results.parquet` (one row per source row, native scores, sor
 
 `normalize.py` adds the comparable score columns (`effect_rank`, `effect_scaled`, `effect_z`) and per-screen direction, using the primary score (first signed score column) and the Hart CEGv2/NEGv1 gene lists, which `fetch` downloads. The known-biology summary is in `validation_report.json`; it is flagged, not blocking, because the release gate is a human decision.
 
+`pairing.py` links each drug screen to candidate "no drug" screens (rules in its docstring); `export_site.py` writes the result to `drug_pairs.json` for the drug page.
+
 Not done here yet: vocabulary mapping, staging upload. `profile.py` is the M2a exploration script and is not part of the pipeline.
