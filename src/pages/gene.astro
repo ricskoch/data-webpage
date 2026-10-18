@@ -172,6 +172,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           <label id="y-wrap">Gene<br /><input id="y" autocomplete="off" placeholder="e.g. KRAS" /></label>
           <label id="t-wrap" hidden>Tissue<br /><select id="tissue">${[...new Set(lines.lines.map((l) => l.lineage).filter(Boolean))].sort().map((t) => `<option>${escapeHtml(t!)}</option>`).join('')}</select></label>
           <button type="submit">Compare</button></form>
+        <p class="examples">Textbook examples to try: ${EXAMPLES.map(([x, by, y, what]) => `<a href="?g=${x}&amp;by=${by}&amp;y=${y}" title="${what}">${x} by ${y} ${by === 'gain' ? 'gain' : by === 'copy' ? 'loss' : by === 'expression' ? 'off' : 'mutation'}</a>`).join(', ')}.</p>
         <div id="workflow-out" aria-live="polite"></div>` : ''}
         <div id="drugs"></div>
         <h3>Every screen result for this gene</h3>
@@ -274,6 +275,22 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
     }
   }
 
+  // Textbook questions: gene X knocked out, lines split by the state of gene Y (also reachable by link, ?g=X&by=...&y=Y).
+  const EXAMPLES: [string, GroupKind, string, string][] = [
+    ['ERBB2', 'gain', 'ERBB2', 'Copy-number artefact check: lines with extra ERBB2 copies should need ERBB2'],
+    ['SMARCA2', 'expression', 'SMARCA4', 'Paralog pair: SMARCA2 is needed when SMARCA4 is switched off'],
+    ['ARID1B', 'mutation', 'ARID1A', 'Paralog pair: ARID1B is needed when ARID1A is mutated'],
+    ['PRMT5', 'copy', 'MTAP', 'PRMT5 is needed when MTAP is lost (MTAP sits next to the tumour suppressor CDKN2A)'],
+  ];
+  function runExample(p: URLSearchParams) {
+    const by = p.get('by') as GroupKind | null, y = p.get('y');
+    const sel = document.getElementById('by') as HTMLSelectElement | null;
+    if (!sel || !by || !(by in KIND_LABELS)) return;
+    sel.value = by;
+    (document.getElementById('y') as HTMLInputElement).value = y ?? '';
+    (document.getElementById('workflow') as HTMLFormElement).requestSubmit();
+  }
+
   // Gene symbols load up front so the dropdown and the validation below work before the first lookup.
   const known = () => (genes ? Object.keys(genes) : []);
   const formError = document.getElementById('form-error')!;
@@ -316,6 +333,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
   });
   getJSON<Record<string, [string, number]>>('genes.json').then((g) => { genes ??= g; }).catch(() => { /* lookup() reports the load error */ });
   document.getElementById('form')!.addEventListener('submit', (e) => { e.preventDefault(); go(input.value.trim()); });
-  const start = new URLSearchParams(location.search).get('g');
-  if (start) { input.value = start; lookup(start); }
+  const params = new URLSearchParams(location.search);
+  const start = params.get('g');
+  if (start) { input.value = start; lookup(start).then(() => runExample(params)); }
 </script>
