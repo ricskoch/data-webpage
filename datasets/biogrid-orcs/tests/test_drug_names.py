@@ -34,6 +34,35 @@ class DrugNames(unittest.TestCase):
     def test_split_combination(self):
         self.assertEqual(drug_names.split_label("Olaparib  + Cisplatin")["components"], ["Olaparib", "Cisplatin"])
 
+    def test_plus_inside_brackets_does_not_split(self):
+        s = drug_names.split_label("Immunotherapy (GVAX + PD-1 blockade)")
+        self.assertEqual(s["components"], ["Immunotherapy (GVAX + PD-1 blockade)"])
+        self.assertEqual(drug_names.split_label("Olaparib (5 uM) + Cisplatin")["components"],
+                         ["Olaparib (5 uM)", "Cisplatin"])
+
+    def test_curated_name_is_looked_up_under_the_reviewed_spelling(self):
+        curated = {"Aspariginase": {"canonical": "Olaparib", "kind": "drug_compound", "confidence": "high"}}
+        r = drug_names.resolve("Aspariginase", fake(OLAPARIB), curated)
+        self.assertEqual((r["status"], r["pubchem_cid"], r["looked_up_as"], r["curated"]), ("mapped", 23725625, "Olaparib", True))
+        self.assertEqual(r["name"], "Aspariginase")  # the label as written stays the key
+
+    def test_curated_name_without_canonical_is_not_looked_up(self):
+        calls = []
+        r = drug_names.resolve("Radiation", lambda u: calls.append(u),
+                               {"Radiation": {"canonical": None, "kind": "condition_change", "confidence": "high"}})
+        self.assertEqual((r["status"], r["pubchem_cid"], calls), ("no_id", None, []))
+
+    def test_curated_pair_looks_up_both_and_reports_the_worse_status(self):
+        base = fake({**OLAPARIB, "name/Weird/cids": {"IdentifierList": {"CID": [1, 2]}}})
+        curated = {"A and B": {"canonical": ["Olaparib", "Weird"], "kind": "drug_compound", "confidence": "high"}}
+        r = drug_names.resolve("A and B", base, curated)
+        self.assertEqual(r["status"], "review")
+        self.assertEqual([c["pubchem_cid"] for c in r["compounds"]], [23725625, 1])
+
+    def test_curated_unknown_spelling_stays_unmapped(self):
+        curated = {"X": {"canonical": "Nothing", "kind": "drug_compound", "confidence": "low"}}
+        self.assertEqual(drug_names.resolve("X", fake({}), curated)["status"], "unmapped")
+
     def test_resolved_name_gets_both_ids(self):
         r = drug_names.resolve("Olaparib", fake(OLAPARIB))
         self.assertEqual((r["status"], r["pubchem_cid"], r["pubchem_title"], r["chembl_id"]),
@@ -61,7 +90,7 @@ class DrugNames(unittest.TestCase):
         m = drug_names.build_mapping(["Olaparib", "Mutation: BRCA2 KO | Olaparib", "Olaparib + Weird", "Mutation: TP53 KO"],
                                      counting)
         self.assertEqual(len([u for u in calls if "name/Olaparib/cids" in u]), 1)
-        self.assertEqual(drug_names.summary(m), {"mapped": 2, "review": 1, "unmapped": 0, "not_a_compound": 0, "background_only": 1})
+        self.assertEqual(drug_names.summary(m), {"mapped": 2, "review": 1, "unmapped": 0, "not_a_compound": 0, "no_id": 0, "background_only": 1})
 
     def test_parallel_lookup_gives_the_same_mapping_and_reports_progress(self):
         labels = ["Olaparib", "Mutation: BRCA2 KO | Olaparib", "Olaparib + A159"]
@@ -88,6 +117,30 @@ class DrugNames(unittest.TestCase):
         self.assertEqual(drug_names.resolve("V. parahaemolyticus with active T3SS1", lambda u: None)["status"], "not_a_compound")
         m = {"Virus: X": {"background": [], "components": [{"status": "not_a_compound"}]}}
         self.assertEqual(drug_names.summary(m)["not_a_compound"], 1)
+
+
+class ReviewedFile(unittest.TestCase):
+    """drugs.yaml is hand-reviewed; keep it well-formed."""
+
+    def setUp(self):
+        import treatment_class
+        self.curated = drug_names.load_curated(pathlib.Path(__file__).resolve().parent.parent / "drugs.yaml")
+        self.kinds = set(treatment_class.load_rules()["categories"]) - {"untreated"}
+
+    def test_every_entry_is_complete(self):
+        for name, e in self.curated.items():
+            self.assertIn(e["kind"], self.kinds, name)
+            self.assertIn(e["confidence"], ("high", "medium", "low"), name)
+            self.assertTrue(e["canonical"] is None or isinstance(e["canonical"], (str, list)), name)
+
+    def test_names_are_already_split_the_way_the_pipeline_splits(self):
+        for name in self.curated:
+            self.assertEqual(drug_names.split_label(name)["components"], [name], name)
+
+    def test_only_drugs_get_a_lookup_name(self):
+        for name, e in self.curated.items():
+            if e["canonical"] is not None:
+                self.assertEqual(e["kind"], "drug_compound", name)
 
 
 if __name__ == "__main__":
