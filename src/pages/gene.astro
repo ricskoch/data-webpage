@@ -28,6 +28,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
 <script>
   import { getJSON, fmt, label, escapeHtml, type Screen, type GeneRow, treatmentLabel } from '../scripts/data';
   import { mountTable } from '../scripts/table';
+  import { drugSummary } from '../scripts/drug';
   import { mountCombobox, suggest, exactSymbol } from '../scripts/combobox';
   import { loadPathways, pathwaysOfGene, genesInCollection, type Pathways, type Pathway } from '../scripts/pathways';
   import { dependencyByMutation, verdict, median as recipeMedian, MIN_LINES, type Comparison } from '../scripts/recipe';
@@ -132,6 +133,7 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
           <input id="y" autocomplete="off" placeholder="e.g. KRAS" required /></label>
           <button type="submit">Compare</button></form>
         <div id="recipe-out" aria-live="polite"></div>` : ''}
+        <div id="drugs"></div>
         <h3>Every screen result for this gene</h3>
         <div id="results"></div>${lines && gctx ? `<p>${credit(lines)}</p>` : ''}`;
       type Row = { id: number; s: Screen; rank: number | null; scale: number | null; z: number | null; hit: number; native: number | null;
@@ -142,6 +144,12 @@ import ScoreExplainer from '../components/ScoreExplainer.astro';
         return { id, s, rank: r[1], scale: r[2], z: r[3], hit: r[4], native: r[5], tissue: line?.lineage ?? null,
           ctx: li === undefined ? null : geneInLine(gctx, li) };
       });
+      const dsum = drugSummary(data.map((r) => ({ treatment: r.s.treatment, cell_line_label: r.s.cell_line_label, hit: r.hit })));
+      if (dsum.length) document.getElementById('drugs')!.innerHTML = `<h3>Response to drugs</h3>
+        <p>Screens with a drug or other treatment that report <span class="gene">${escapeHtml(key)}</span>. A hit is the source's own call,
+          so it can mean sensitising or protecting depending on the paper. Open a drug to compare its screens with untreated ones.</p>
+        <div class="table-box" tabindex="0" role="region" aria-label="Drug screens for ${escapeHtml(key)}"><table><thead><tr><th>Treatment</th><th>Screens</th><th>Cell lines</th><th>Hits</th></tr></thead><tbody>${
+          dsum.map((d) => `<tr><td><a href="/drug?d=${encodeURIComponent(d.drug)}">${escapeHtml(d.drug)}</a></td><td>${d.screens}</td><td>${d.lines}</td><td>${d.hits}</td></tr>`).join('')}</tbody></table></div>`;
       const ctxCols = lines && gctx;
       const text = (v: string | null | undefined) => escapeHtml(v ?? '–');
       const inGene = pw ? pathwaysOfGene(pw, key) : [];

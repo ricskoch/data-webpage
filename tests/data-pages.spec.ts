@@ -54,6 +54,8 @@ test('/gene: results start most depleted first and can be filtered to hits', asy
   await page.goto('/gene?g=tp53');
   await expect(page.locator('#results [data-count]')).toHaveText('60 of 60 screen results match.');
   await expect(page.locator('#results tbody tr').first().locator('td').nth(5)).toHaveText('0.00');
+  await expect(page.locator('#drugs')).toContainText('Olaparib');
+  await expect(page.locator('#drugs tbody tr')).toHaveCount(1);
   await page.getByLabel('Treatment', { exact: true }).selectOption('Olaparib');
   await expect(page.locator('#results [data-count]')).toHaveText('6 of 60 screen results match.');
   await page.getByRole('button', { name: 'Clear filters' }).click();

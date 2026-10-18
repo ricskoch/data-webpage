@@ -27,3 +27,18 @@ export function topDifferences(points: Point[], dir: 1 | -1, n = 10): Point[] {
 /** The drug name without dose, for grouping screens by drug. */
 export const drugsOf = <T extends { treatment?: string | null; has_z?: boolean }>(screens: T[]) =>
   [...new Set(screens.filter((s) => s.has_z && s.treatment).map((s) => s.treatment!))].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+
+export interface DrugSummary { drug: string; screens: number; hits: number; lines: number }
+
+/** Per drug: how many screens (with a drug) report the gene, how many call it a hit, in how many cell lines. */
+export function drugSummary(results: { treatment?: string | null; cell_line_label: string; hit: number }[]): DrugSummary[] {
+  const by = new Map<string, { screens: number; hits: number; lines: Set<string> }>();
+  for (const r of results) {
+    if (!r.treatment) continue;
+    const e = by.get(r.treatment) ?? { screens: 0, hits: 0, lines: new Set<string>() };
+    e.screens += 1; e.hits += r.hit ? 1 : 0; e.lines.add(r.cell_line_label);
+    by.set(r.treatment, e);
+  }
+  return [...by].map(([drug, e]) => ({ drug, screens: e.screens, hits: e.hits, lines: e.lines.size }))
+    .sort((a, b) => b.hits - a.hits || b.screens - a.screens || a.drug.localeCompare(b.drug, 'en', { sensitivity: 'base' }));
+}
