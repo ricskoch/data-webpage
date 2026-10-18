@@ -1,4 +1,4 @@
 # Pipeline only (not shipped to the website). Pinned; updates come through Dependabot PRs.
-pandas==3.0.5
+pandas==3.0.6
 pyarrow==25.0.1
 PyYAML==6.0.2
