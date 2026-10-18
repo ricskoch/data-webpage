@@ -3,7 +3,8 @@ import { groupForChart } from '../src/scripts/explorer';
 
 // Pure-logic tests for the grouped plot on /gene: which groups get a row, in which order.
 const rows = (spec: Record<string, number[]>) => Object.entries(spec).flatMap(([g, ranks]) => ranks.map((rank) => ({ g, rank })));
-const by = { label: (r: { g: string | null }) => r.g, value: (r: { rank: number }) => r.rank };
+type R = { g: string | null; rank: number };
+const by = { label: (r: R) => r.g, value: (r: R) => r.rank };
 
 test('groupForChart: groups ordered by median value, most depleted first', () => {
   const out = groupForChart(rows({ B: [0.8, 0.9], A: [0.1, 0.3], C: [0.5] }), by.label, by.value);
@@ -27,5 +28,5 @@ test('groupForChart: beyond max, the rarest groups are pooled into one "other" r
 });
 
 test('groupForChart: no rows, no groups', () => {
-  expect(groupForChart([], by.label, by.value)).toEqual([]);
+  expect(groupForChart<R>([], by.label, by.value)).toEqual([]);
 });
