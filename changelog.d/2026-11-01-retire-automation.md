@@ -1,0 +1,1 @@
+- Project retired: Dependabot version updates and the auto-merge workflow are switched off. The site and data stay online as they are.
